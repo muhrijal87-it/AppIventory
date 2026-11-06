@@ -1,0 +1,8 @@
+{
+  "name": "Remix CI-Inventaris - Sistem Inventaris Barang CodeIgniter \u0026 MySQL",
+  "description": "Aplikasi manajemen inventaris barang dengan struktur \u0026 tampilan khas CodeIgniter, database MySQL dengan fitur backup \u0026 reset, serta sistem autentikasi pengguna berjenjang.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
