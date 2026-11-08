@@ -792,33 +792,53 @@ class MySQLEngine {
   constructor() {
     this.state = this.loadFromStorage();
     if (db) {
-      getDoc(doc(db, 'ci_inventaris_db', 'master_state')).then((snap) => {
-        if (snap.exists()) {
-          const remoteState = snap.data() as DatabaseState;
-          if (remoteState && remoteState.barang) {
-            this.state = remoteState;
-            this.saveToStorage();
-            if (typeof window !== 'undefined') {
-              window.dispatchEvent(new Event('db_synced_from_cloud'));
+      getDoc(doc(db, 'ci_inventaris_db', 'master_state'))
+        .then((snap) => {
+          if (snap.exists()) {
+            const remoteState = snap.data() as DatabaseState & { is_blank_reset?: boolean };
+            if (remoteState && Array.isArray(remoteState.barang) && (remoteState.barang.length > 0 || remoteState.is_blank_reset)) {
+              this.state = remoteState;
+              this.saveToStorage();
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new Event('db_synced_from_cloud'));
+              }
+            } else {
+              // Remote state is empty/invalid; seed Firestore with local state
+              this.saveToStorage();
             }
+          } else {
+            // Document does not exist in Firestore; populate with initial seed state
+            this.saveToStorage();
           }
-        }
-      }).catch((err) => {
-        console.error('Error fetching state from Firestore:', err);
-      });
+        })
+        .catch((err) => {
+          console.error('Error fetching state from Firestore:', err);
+        });
 
-      onSnapshot(doc(db, 'ci_inventaris_db', 'master_state'), (snap) => {
-        if (snap.exists()) {
-          const remoteState = snap.data() as DatabaseState;
-          if (remoteState && remoteState.lastUpdated !== this.state.lastUpdated) {
-            this.state = remoteState;
-            this.saveToStorage();
-            if (typeof window !== 'undefined') {
-              window.dispatchEvent(new Event('db_synced_from_cloud'));
+      onSnapshot(
+        doc(db, 'ci_inventaris_db', 'master_state'),
+        (snap) => {
+          if (snap.exists()) {
+            const remoteState = snap.data() as DatabaseState & { is_blank_reset?: boolean };
+            if (remoteState && remoteState.lastUpdated !== this.state.lastUpdated) {
+              if (Array.isArray(remoteState.barang) && (remoteState.barang.length > 0 || remoteState.is_blank_reset)) {
+                this.state = remoteState;
+                try {
+                  localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+                } catch (e) {
+                  console.error('Failed saving to localStorage:', e);
+                }
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new Event('db_synced_from_cloud'));
+                }
+              }
             }
           }
+        },
+        (err) => {
+          console.warn('Firestore onSnapshot error:', err);
         }
-      });
+      );
     }
   }
 
@@ -845,6 +865,13 @@ class MySQLEngine {
         if (!parsed.departemen || !Array.isArray(parsed.departemen) || parsed.departemen.length === 0) {
           parsed.departemen = JSON.parse(JSON.stringify(INITIAL_SEED_DATA.departemen));
         }
+        // If loaded state has 0 items and was not explicitly reset blank, fallback to INITIAL_SEED_DATA
+        if (
+          (!parsed.barang || (parsed.barang.length === 0 && !parsed.is_blank_reset)) &&
+          INITIAL_SEED_DATA.barang.length > 0
+        ) {
+          return JSON.parse(JSON.stringify(INITIAL_SEED_DATA));
+        }
         return parsed;
       }
     } catch {
@@ -858,7 +885,16 @@ class MySQLEngine {
       this.state.lastUpdated = new Date().toISOString();
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
       if (db) {
-        setDoc(doc(db, 'ci_inventaris_db', 'master_state'), this.state).catch((err) => {
+        // Prepare lightweight payload for Firestore to prevent 1MB document limit issues
+        const cleanPayload = JSON.parse(JSON.stringify(this.state));
+        if (cleanPayload.barang && Array.isArray(cleanPayload.barang)) {
+          cleanPayload.barang = cleanPayload.barang.map((b: any) => ({
+            ...b,
+            // Truncate ultra-large images to avoid Firestore 1MB doc size limit
+            foto: b.foto && b.foto.length > 300000 ? b.foto.substring(0, 300000) : b.foto,
+          }));
+        }
+        setDoc(doc(db, 'ci_inventaris_db', 'master_state'), cleanPayload).catch((err) => {
           console.error('Error saving state to Firestore:', err);
         });
       }
@@ -1090,10 +1126,12 @@ class MySQLEngine {
     const t0 = performance.now();
     if (toDefaultSeed) {
       this.state = JSON.parse(JSON.stringify(INITIAL_SEED_DATA));
+      (this.state as any).is_blank_reset = false;
     } else {
       this.state = {
         version: '8.0.35-CodeIgniter4',
         lastUpdated: new Date().toISOString(),
+        is_blank_reset: true,
         users: currentUser ? [currentUser] : JSON.parse(JSON.stringify(INITIAL_SEED_DATA.users)),
         kategori: [],
         satuan: [],
@@ -1115,7 +1153,7 @@ class MySQLEngine {
             timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
           },
         ],
-      };
+      } as any;
     }
     this.saveToStorage();
     const duration = performance.now() - t0;

@@ -21,10 +21,16 @@ import {
 import { Barang, Kategori, Satuan } from '../../types';
 import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
+import { mysql } from '../../db/mysqlEngine';
 
 export const BarangListView: React.FC = () => {
-  const { barang, kategori, satuan, addBarang, updateBarang, deleteBarang, mutasiStok } = useInventory();
+  const { barang, kategori, satuan, addBarang, updateBarang, deleteBarang, reloadState } = useInventory();
   const { can } = useAuth();
+
+  const handleRestoreSeedData = () => {
+    mysql.resetDatabase(true);
+    reloadState();
+  };
 
   // Filters & Search
   const [searchTerm, setSearchTerm] = useState('');
@@ -141,16 +147,36 @@ export const BarangListView: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      setModalError('Ukuran foto terlalu besar! Maksimal 2 MB.');
+    if (file.size > 5 * 1024 * 1024) {
+      setModalError('Ukuran foto terlalu besar! Maksimal 5 MB.');
       return;
     }
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      setFormState((prev) => ({ ...prev, foto: dataUrl }));
-      setModalError('');
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 500;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > MAX_WIDTH) {
+          height = Math.round((height * MAX_WIDTH) / width);
+          width = MAX_WIDTH;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.75);
+          setFormState((prev) => ({ ...prev, foto: compressedDataUrl }));
+          setModalError('');
+        }
+      };
+      img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
   };
@@ -354,7 +380,33 @@ export const BarangListView: React.FC = () => {
               {filteredItems.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-400">
-                    Tidak ada barang yang cocok dengan kriteria pencarian.
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <Package className="w-10 h-10 text-slate-300 dark:text-slate-700" />
+                      <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                        {barang.length === 0
+                          ? 'Database barang saat ini masih kosong.'
+                          : 'Tidak ada barang yang cocok dengan kriteria pencarian.'}
+                      </p>
+                      {barang.length === 0 && (
+                        <div className="flex items-center gap-3 pt-2">
+                          <button
+                            onClick={handleRestoreSeedData}
+                            className="px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors border border-slate-200 dark:border-slate-700"
+                          >
+                            Muat 12 Master Data Barang (Seed Default)
+                          </button>
+                          {can('manage_inventory') && (
+                            <button
+                              onClick={handleOpenAdd}
+                              className="px-3.5 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors flex items-center gap-1.5"
+                            >
+                              <Plus className="w-4 h-4" />
+                              <span>Tambah Barang Baru</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ) : (

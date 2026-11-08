@@ -113,24 +113,22 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     state.barang.unshift(newBarang);
 
-    // Initial stock mutation if stock > 0
-    if (newBarang.stok > 0) {
-      const mutasiId = state.mutasi_stok.length > 0 ? Math.max(...state.mutasi_stok.map((m) => m.id)) + 1 : 1;
-      state.mutasi_stok.unshift({
-        id: mutasiId,
-        tanggal: now,
-        barang_id: newId,
-        jenis: 'Penyesuaian',
-        jumlah: newBarang.stok,
-        stok_sebelum: 0,
-        stok_sesudah: newBarang.stok,
-        referensi: 'SALDO-AWAL',
-        keterangan: 'Pencatatan stok saldo awal registrasi barang baru',
-        petugas_id: user ? user.id : 1,
-        asal: 'Registrasi SKU Baru (Pabrikan)',
-        tujuan: newBarang.lokasi_rak || 'Gudang Utama',
-      });
-    }
+    // Always record registration mutation in mutasi_stok so it appears in live activity tracker
+    const mutasiId = state.mutasi_stok.length > 0 ? Math.max(...state.mutasi_stok.map((m) => m.id)) + 1 : 1;
+    state.mutasi_stok.unshift({
+      id: mutasiId,
+      tanggal: now,
+      barang_id: newId,
+      jenis: 'Penyesuaian',
+      jumlah: newBarang.stok,
+      stok_sebelum: 0,
+      stok_sesudah: newBarang.stok,
+      referensi: 'REGISTRASI',
+      keterangan: `Pencatatan SKU & pendaftaran barang baru (${newBarang.nama_barang})`,
+      petugas_id: user ? user.id : 1,
+      asal: 'Registrasi SKU Baru',
+      tujuan: newBarang.lokasi_rak || 'Gudang Utama',
+    });
 
     mysql.setState(state);
     reloadState();
