@@ -1,0 +1,211 @@
+{
+  "entities": {
+    "Barang": {
+      "title": "Barang",
+      "description": "Inventory items catalog",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number" },
+        "kode_barang": { "type": "string" },
+        "nama_barang": { "type": "string" },
+        "kategori_id": { "type": "number" },
+        "satuan_id": { "type": "number" },
+        "stok": { "type": "number" },
+        "stok_min": { "type": "number" },
+        "harga_beli": { "type": "number" },
+        "harga_jual": { "type": "number" },
+        "lokasi_rak": { "type": "string" },
+        "kondisi": { "type": "string", "enum": ["Baik", "Perbaikan", "Rusak"] },
+        "deskripsi": { "type": "string" },
+        "barcode": { "type": "string" },
+        "model": { "type": "string" },
+        "serial_number": { "type": "string" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["kode_barang", "nama_barang", "stok"]
+    },
+    "Kategori": {
+      "title": "Kategori",
+      "description": "Item categories",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number" },
+        "kode_kategori": { "type": "string" },
+        "nama_kategori": { "type": "string" },
+        "deskripsi": { "type": "string" }
+      },
+      "required": ["nama_kategori"]
+    },
+    "Satuan": {
+      "title": "Satuan",
+      "description": "Item units",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number" },
+        "kode_satuan": { "type": "string" },
+        "nama_satuan": { "type": "string" }
+      },
+      "required": ["nama_satuan"]
+    },
+    "Departemen": {
+      "title": "Departemen",
+      "description": "Departments",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number" },
+        "kode_departemen": { "type": "string" },
+        "nama_departemen": { "type": "string" },
+        "penanggung_jawab": { "type": "string" },
+        "lokasi_gedung": { "type": "string" },
+        "keterangan": { "type": "string" }
+      },
+      "required": ["nama_departemen"]
+    },
+    "Supplier": {
+      "title": "Supplier",
+      "description": "Suppliers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number" },
+        "kode_supplier": { "type": "string" },
+        "nama_supplier": { "type": "string" },
+        "kontak_pic": { "type": "string" },
+        "no_telepon": { "type": "string" },
+        "email": { "type": "string" },
+        "alamat": { "type": "string" }
+      },
+      "required": ["nama_supplier"]
+    },
+    "TransaksiMasuk": {
+      "title": "TransaksiMasuk",
+      "description": "Inbound inventory transactions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number" },
+        "no_faktur": { "type": "string" },
+        "tanggal": { "type": "string" },
+        "supplier_id": { "type": "number" },
+        "barang_id": { "type": "number" },
+        "jumlah": { "type": "number" },
+        "harga_satuan": { "type": "number" },
+        "total_harga": { "type": "number" },
+        "catatan": { "type": "string" },
+        "petugas_id": { "type": "number" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["no_faktur", "barang_id", "jumlah"]
+    },
+    "TransaksiKeluar": {
+      "title": "TransaksiKeluar",
+      "description": "Outbound and transfer transactions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number" },
+        "no_transaksi": { "type": "string" },
+        "tanggal": { "type": "string" },
+        "penerima": { "type": "string" },
+        "departemen": { "type": "string" },
+        "barang_id": { "type": "number" },
+        "jumlah": { "type": "number" },
+        "model": { "type": "string" },
+        "serial_number": { "type": "string" },
+        "keperluan": { "type": "string" },
+        "petugas_id": { "type": "number" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["no_transaksi", "barang_id", "jumlah"]
+    },
+    "MutasiStok": {
+      "title": "MutasiStok",
+      "description": "Stock mutation audit log",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number" },
+        "tanggal": { "type": "string" },
+        "barang_id": { "type": "number" },
+        "jenis": { "type": "string" },
+        "jumlah": { "type": "number" },
+        "stok_sebelum": { "type": "number" },
+        "stok_sesudah": { "type": "number" },
+        "referensi": { "type": "string" },
+        "keterangan": { "type": "string" },
+        "petugas_id": { "type": "number" },
+        "asal": { "type": "string" },
+        "tujuan": { "type": "string" }
+      },
+      "required": ["barang_id", "jumlah", "jenis"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User accounts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number" },
+        "username": { "type": "string" },
+        "nama_lengkap": { "type": "string" },
+        "role": { "type": "string" },
+        "departemen": { "type": "string" },
+        "status": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["username", "role"]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "System activity audit logs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number" },
+        "timestamp": { "type": "string" },
+        "action": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "user": { "type": "string" }
+      },
+      "required": ["action", "description"]
+    }
+  },
+  "firestore": {
+    "/barang/{itemId}": {
+      "schema": { "$ref": "#/entities/Barang" },
+      "description": "Inventory catalog items"
+    },
+    "/kategori/{catId}": {
+      "schema": { "$ref": "#/entities/Kategori" },
+      "description": "Item categories"
+    },
+    "/satuan/{satId}": {
+      "schema": { "$ref": "#/entities/Satuan" },
+      "description": "Item units"
+    },
+    "/departemen/{deptId}": {
+      "schema": { "$ref": "#/entities/Departemen" },
+      "description": "Departments"
+    },
+    "/supplier/{suppId}": {
+      "schema": { "$ref": "#/entities/Supplier" },
+      "description": "Suppliers"
+    },
+    "/transaksi_masuk/{trxId}": {
+      "schema": { "$ref": "#/entities/TransaksiMasuk" },
+      "description": "Inbound transactions"
+    },
+    "/transaksi_keluar/{trxId}": {
+      "schema": { "$ref": "#/entities/TransaksiKeluar" },
+      "description": "Outbound and transfer transactions"
+    },
+    "/mutasi_stok/{mutId}": {
+      "schema": { "$ref": "#/entities/MutasiStok" },
+      "description": "Stock mutations"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Users"
+    },
+    "/activity_logs/{logId}": {
+      "schema": { "$ref": "#/entities/ActivityLog" },
+      "description": "Activity logs"
+    }
+  }
+}

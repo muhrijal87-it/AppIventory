@@ -1,3 +1,16 @@
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import firebaseConfig from '../../firebase-applet-config.json';
+
+let db: any = null;
+try {
+  const app = initializeApp(firebaseConfig);
+  db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
+} catch (e) {
+  console.warn('Firebase init warning:', e);
+}
+
 import {
   User,
   Kategori,
@@ -778,6 +791,35 @@ class MySQLEngine {
 
   constructor() {
     this.state = this.loadFromStorage();
+    if (db) {
+      getDoc(doc(db, 'ci_inventaris_db', 'master_state')).then((snap) => {
+        if (snap.exists()) {
+          const remoteState = snap.data() as DatabaseState;
+          if (remoteState && remoteState.barang) {
+            this.state = remoteState;
+            this.saveToStorage();
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new Event('db_synced_from_cloud'));
+            }
+          }
+        }
+      }).catch((err) => {
+        console.error('Error fetching state from Firestore:', err);
+      });
+
+      onSnapshot(doc(db, 'ci_inventaris_db', 'master_state'), (snap) => {
+        if (snap.exists()) {
+          const remoteState = snap.data() as DatabaseState;
+          if (remoteState && remoteState.lastUpdated !== this.state.lastUpdated) {
+            this.state = remoteState;
+            this.saveToStorage();
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new Event('db_synced_from_cloud'));
+            }
+          }
+        }
+      });
+    }
   }
 
   private loadFromStorage(): DatabaseState {
@@ -815,8 +857,13 @@ class MySQLEngine {
     try {
       this.state.lastUpdated = new Date().toISOString();
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+      if (db) {
+        setDoc(doc(db, 'ci_inventaris_db', 'master_state'), this.state).catch((err) => {
+          console.error('Error saving state to Firestore:', err);
+        });
+      }
     } catch (err) {
-      console.error('Failed to save to localStorage:', err);
+      console.error('Failed to save to storage:', err);
     }
   }
 
