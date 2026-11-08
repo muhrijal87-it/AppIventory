@@ -90,7 +90,6 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     reloadState();
     const handleCloudSync = () => {
       reloadState();
-      setFlash('info', 'Database telah disinkronkan secara real-time dari Cloud (Multi-PC).');
     };
     window.addEventListener('db_synced_from_cloud', handleCloudSync);
     return () => {
