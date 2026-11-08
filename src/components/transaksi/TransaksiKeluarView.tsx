@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { QrReader } from 'react-qr-reader';
+import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
 import {
   ArrowUpFromLine,
   Plus,
@@ -577,31 +577,19 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
                       <Camera className="w-4 h-4" />
                     </button>
                   </div>
-                  {showQRScanner && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-                      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl w-full max-w-sm shadow-2xl">
-                        <div className="flex items-center justify-between mb-3">
-                          <h4 className="font-bold text-sm">Scan Serial Number</h4>
-                          <button onClick={() => setShowQRScanner(false)} className="text-slate-400 hover:text-slate-600">
-                            <X className="w-5 h-5" />
-                          </button>
-                        </div>
-                        <div className="overflow-hidden rounded-xl h-64 w-full">
-                          {/* @ts-ignore */}
-                          <QrReader
-                            constraints={{ facingMode: 'environment' }}
-                            scanDelay={500}
-                            onResult={(result, error) => {
-                              if (result) {
-                                setSerialNumber(result.getText());
-                                setShowQRScanner(false);
-                              }
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  <BarcodeScannerModal
+                    isOpen={showQRScanner}
+                    onClose={() => setShowQRScanner(false)}
+                    onScan={(scannedVal) => setSerialNumber(scannedVal)}
+                    title="Scan Barcode / QR Serial Number"
+                    registeredSerials={
+                      barang
+                        .find((b) => b.id === Number(barangId))
+                        ?.serial_number?.split(/[,;\n]+/)
+                        .map((s) => s.trim())
+                        .filter(Boolean) || []
+                    }
+                  />
                 </div>
               </div>
 

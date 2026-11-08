@@ -23,6 +23,7 @@ import {
 import { TransaksiKeluar } from '../../types';
 import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
+import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
 
 interface PerpindahanBarangViewProps {
   onNavigate?: (view: string) => void;
@@ -68,6 +69,7 @@ export const PerpindahanBarangView: React.FC<PerpindahanBarangViewProps> = ({ on
   const [serialNumber, setSerialNumber] = useState('');
   const [keperluan, setKeperluan] = useState('');
   const [fotoBukti, setFotoBukti] = useState<string>('');
+  const [showQRScanner, setShowQRScanner] = useState(false);
 
   const handleOpenAdd = () => {
     const nextSeq = transaksiKeluar.length + 1;
@@ -528,12 +530,35 @@ export const PerpindahanBarangView: React.FC<PerpindahanBarangViewProps> = ({ on
                       <span>Ambil Serial Number</span>
                     </button>
                   </div>
-                  <input
-                    type="text"
-                    value={serialNumber}
-                    onChange={(e) => setSerialNumber(e.target.value)}
-                    placeholder="Contoh: SN-8829104-X, SN-8829105-Y"
-                    className="w-full px-3 py-2 font-mono bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={serialNumber}
+                      onChange={(e) => setSerialNumber(e.target.value)}
+                      placeholder="Contoh: SN-8829104-X, SN-8829105-Y"
+                      className="w-full pl-3 pr-10 py-2 font-mono bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowQRScanner(true)}
+                      className="absolute right-2 top-2 p-1 rounded-md text-slate-500 hover:text-purple-600 hover:bg-purple-50 transition-colors"
+                      title="Scan Barcode/QR"
+                    >
+                      <Camera className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <BarcodeScannerModal
+                    isOpen={showQRScanner}
+                    onClose={() => setShowQRScanner(false)}
+                    onScan={(scannedVal) => setSerialNumber(scannedVal)}
+                    title="Scan Barcode / QR Serial Number"
+                    registeredSerials={
+                      barang
+                        .find((b) => b.id === Number(barangId))
+                        ?.serial_number?.split(/[,;\n]+/)
+                        .map((s) => s.trim())
+                        .filter(Boolean) || []
+                    }
                   />
                 </div>
               </div>
