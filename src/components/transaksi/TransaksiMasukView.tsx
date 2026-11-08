@@ -121,9 +121,6 @@ export const TransaksiMasukView: React.FC = () => {
             <h2 className="text-base font-bold text-slate-900 dark:text-white">
               Transaksi Barang Masuk (Inbound / Restok)
             </h2>
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800">
-              tbl_transaksi_masuk ({transaksiMasuk.length})
-            </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
             Pencatatan pengadaan barang dari supplier, otomatis memperbarui stok fisik, kartu mutasi, dan bukti foto nota.

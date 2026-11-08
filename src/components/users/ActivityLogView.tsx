@@ -61,9 +61,6 @@ export const ActivityLogView: React.FC = () => {
             <h2 className="text-base font-bold text-slate-900 dark:text-white">
               Log Audit Aktivitas &amp; Keamanan Sistem
             </h2>
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold border border-slate-200 dark:border-slate-700">
-              tbl_activity_logs ({filteredLogs.length})
-            </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
             Audit trail pencatatan aktivitas pengguna secara otomatis (login, mutasi inventaris, cadangan &amp; reset database).

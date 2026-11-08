@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Flame,
   User as UserIcon,
   LogOut,
   Shield,
@@ -88,19 +87,6 @@ export const CodeIgniterHeader: React.FC<HeaderProps> = ({
         {/* Left: Brand & Breadcrumb */}
         <div className="flex items-center gap-4 min-w-0">
           <div className="flex items-center gap-2.5 shrink-0">
-            {/* CodeIgniter Flame Logo */}
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-orange-600 flex items-center justify-center text-white shadow-xs">
-              <Flame className="w-5 h-5 fill-current" />
-            </div>
-            <div className="hidden sm:block">
-              <div className="flex items-center gap-1.5">
-                <span className="font-bold text-slate-900 dark:text-white tracking-tight text-base">CodeIgniter</span>
-                <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 font-semibold border border-red-200 dark:border-red-900">
-                  v4.5.3
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-none">Web Inventory &amp; MySQL Suite</p>
-            </div>
           </div>
 
           <div className="hidden md:flex items-center text-xs text-slate-400 dark:text-slate-500 pl-3 border-l border-slate-200 dark:border-slate-800">

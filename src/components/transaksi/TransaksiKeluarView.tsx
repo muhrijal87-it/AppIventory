@@ -299,9 +299,6 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
             <h2 className="text-base font-bold text-slate-900 dark:text-white">
               Transaksi Barang Keluar (Outbound / Distribusi)
             </h2>
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300 font-semibold border border-orange-200 dark:border-orange-800">
-              tbl_transaksi_keluar ({transaksiKeluar.length})
-            </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
             Pencatatan distribusi barang ke departemen/divisi dengan validasi stok ketat dan lampiran foto bukti penyerahan.

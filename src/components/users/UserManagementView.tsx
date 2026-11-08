@@ -116,9 +116,6 @@ export const UserManagementView: React.FC = () => {
             <h2 className="text-base font-bold text-slate-900 dark:text-white">
               Manajemen Pengguna &amp; Hak Akses (RBAC)
             </h2>
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-semibold border border-indigo-200 dark:border-indigo-800">
-              tbl_users ({users.length})
-            </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
             Kelola otentikasi berjenjang (Administrator, Staff Gudang, Manajer Operasional) untuk menjamin keamanan data inventaris.

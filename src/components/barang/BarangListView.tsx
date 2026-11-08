@@ -248,9 +248,6 @@ export const BarangListView: React.FC = () => {
             <h2 className="text-base font-bold text-slate-900 dark:text-white">
               Katalog Data Barang Inventaris
             </h2>
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold border border-slate-200 dark:border-slate-700">
-              tbl_barang ({filteredItems.length} items)
-            </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
             Kelola inventaris fisik, foto produk, kontrol stok minimum, rak penyimpanan, dan kode barcode.

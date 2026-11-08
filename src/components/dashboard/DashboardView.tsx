@@ -42,10 +42,6 @@ export const DashboardView: React.FC<DashboardProps> = ({ onNavigate, onOpenMVCM
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400 font-mono">
-              CodeIgniter 4.5.3 + MySQL 8.0
-            </span>
-            <span className="text-xs text-slate-400">·</span>
             <span className="text-xs text-slate-500">Sistem Manajemen Gudang &amp; Logistik</span>
           </div>
           <h1 className="text-lg font-bold text-slate-900 dark:text-white mt-1">
@@ -110,8 +106,7 @@ export const DashboardView: React.FC<DashboardProps> = ({ onNavigate, onOpenMVCM
               {stats.totalJenisBarang}
             </div>
             <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
-              <span>Terdaftar di</span>
-              <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">tbl_barang</span>
+              <span>Terdaftar di Katalog</span>
             </div>
           </div>
         </div>

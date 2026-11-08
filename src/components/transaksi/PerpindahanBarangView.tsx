@@ -220,9 +220,6 @@ export const PerpindahanBarangView: React.FC<PerpindahanBarangViewProps> = ({ on
               <ArrowRightLeft className="w-5 h-5 text-purple-600" />
               <span>Perpindahan Barang (Alur Distribusi)</span>
             </h2>
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-semibold border border-purple-200 dark:border-purple-800">
-              Data: tbl_transaksi_keluar ({transaksiKeluar.length})
-            </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
             Monitoring dan pencatatan perpindahan barang fisik dari Gudang Utama ke unit kerja, departemen, atau lokasi operasional.
