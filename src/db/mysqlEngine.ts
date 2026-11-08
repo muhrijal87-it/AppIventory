@@ -472,6 +472,20 @@ export const INITIAL_SEED_DATA: DatabaseState = {
       petugas_id: 2,
       created_at: '2026-10-22 13:15:00',
     },
+    {
+      id: 4,
+      no_transaksi: 'TRF-202610-001',
+      tanggal: '2026-10-25',
+      penerima: 'Budi Santoso',
+      departemen: 'Divisi Pemeliharaan / Maintenance',
+      barang_id: 1,
+      jumlah: 1,
+      model: 'Lenovo ThinkPad L14 Gen 4 (Core i7)',
+      serial_number: 'SN-LNVO-99214A',
+      keperluan: 'Perpindahan serah terima laptop operasional antar divisi kerja',
+      petugas_id: 2,
+      created_at: '2026-10-25 11:00:00',
+    },
   ],
   mutasi_stok: [
     {

@@ -222,6 +222,16 @@ export const CodeIgniterSidebar: React.FC<SidebarProps> = ({
                   <span>Laporan Transaksi</span>
                 </div>
               </button>
+
+              <button
+                onClick={() => handleNavClick('laporan_perpindahan')}
+                className={navItemClass('laporan_perpindahan')}
+              >
+                <div className="flex items-center gap-2.5">
+                  <ArrowRightLeft className="w-4 h-4 text-purple-400" />
+                  <span>Laporan Perpindahan Barang</span>
+                </div>
+              </button>
             </nav>
           </div>
 

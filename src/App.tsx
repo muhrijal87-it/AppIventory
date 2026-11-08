@@ -59,6 +59,8 @@ const MainLayout: React.FC = () => {
         return <ReportsView type="stok" />;
       case 'laporan_transaksi':
         return <ReportsView type="transaksi" />;
+      case 'laporan_perpindahan':
+        return <ReportsView type="perpindahan" />;
       case 'database_backup':
         if (!can('backup_db') && !can('reset_db')) {
           return <ForbiddenAccessView onBack={() => setCurrentView('dashboard')} />;

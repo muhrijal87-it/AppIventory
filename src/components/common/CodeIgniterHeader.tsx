@@ -59,6 +59,8 @@ export const CodeIgniterHeader: React.FC<HeaderProps> = ({
         return ['Laporan', 'Laporan Posisi Stok Fisik'];
       case 'laporan_transaksi':
         return ['Laporan', 'Laporan Mutasi & Transaksi'];
+      case 'laporan_perpindahan':
+        return ['Laporan & Cetak', 'Laporan Perpindahan Barang'];
       case 'database_backup':
         return ['Database MySQL', 'Backup, Restore & Reset'];
       case 'database_query':

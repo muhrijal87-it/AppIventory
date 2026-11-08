@@ -38,6 +38,8 @@ export const CodeIgniterProfiler: React.FC<ProfilerProps> = ({ currentView }) =>
         return { controller: 'App\\Controllers\\Transaksi::keluar', route: 'GET /transaksi/keluar', view: 'transaksi/keluar.php' };
       case 'mutasi_stok':
         return { controller: 'App\\Controllers\\Laporan::mutasi', route: 'GET /mutasi-stok', view: 'mutasi/index.php' };
+      case 'laporan_perpindahan':
+        return { controller: 'App\\Controllers\\Laporan::perpindahan', route: 'GET /laporan/perpindahan', view: 'laporan/perpindahan.php' };
       case 'database_backup':
         return { controller: 'App\\Controllers\\DatabaseTool::backup', route: 'GET /database/backup', view: 'database/backup.php' };
       case 'database_query':
