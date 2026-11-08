@@ -566,9 +566,9 @@ export const DatabaseManagerView: React.FC = () => {
               <div className="p-4 rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 flex items-start gap-3">
                 <ShieldAlert className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                 <div className="text-xs">
-                  <h4 className="font-bold text-red-900 dark:text-red-200">Perhatian: Area Berbahaya (Danger Zone)</h4>
+                  <h4 className="font-bold text-red-900 dark:text-red-200">Perhatian: Area Berbahaya (Danger Zone - Firebase Cloud Sync)</h4>
                   <p className="text-red-700 dark:text-red-300 mt-1 leading-relaxed">
-                    Operasi reset database akan mengubah seluruh data pada tabel MySQL. Pastikan Anda telah membuat salinan cadangan (.sql dump) sebelum melakukan tindakan ini.
+                    Operasi reset atau format database akan memperbarui seluruh data pada database cloud Firebase secara serentak di semua PC/perangkat yang terhubung. Pastikan Anda telah membuat salinan cadangan (.sql / .json dump).
                   </p>
                 </div>
               </div>
