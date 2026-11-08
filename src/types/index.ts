@@ -25,6 +25,15 @@ export interface Satuan {
   nama_satuan: string;
 }
 
+export interface Departemen {
+  id: number;
+  kode_departemen: string;
+  nama_departemen: string;
+  penanggung_jawab?: string;
+  lokasi_gedung?: string;
+  keterangan?: string;
+}
+
 export interface Supplier {
   id: number;
   kode_supplier: string;

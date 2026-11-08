@@ -32,6 +32,8 @@ export const UserManagementView: React.FC = () => {
   const [isActive, setIsActive] = useState(true);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
+  const [formError, setFormError] = useState('');
+
   const handleOpenAdd = () => {
     setEditingUser(null);
     setUsername('');
@@ -39,6 +41,7 @@ export const UserManagementView: React.FC = () => {
     setEmail('');
     setRole('staff');
     setIsActive(true);
+    setFormError('');
     setShowAddModal(true);
   };
 
@@ -49,12 +52,17 @@ export const UserManagementView: React.FC = () => {
     setEmail(target.email);
     setRole(target.role);
     setIsActive(target.is_active);
+    setFormError('');
     setShowAddModal(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username.trim() || !namaLengkap.trim()) return;
+    setFormError('');
+    if (!username.trim() || !namaLengkap.trim()) {
+      setFormError('Username dan Nama Lengkap wajib diisi!');
+      return;
+    }
 
     if (editingUser) {
       updateUser(editingUser.id, {
@@ -67,7 +75,7 @@ export const UserManagementView: React.FC = () => {
     } else {
       // Check duplicate username
       if (users.some((u) => u.username.toLowerCase() === username.toLowerCase())) {
-        alert('Username sudah terdaftar! Gunakan username lain.');
+        setFormError('Username sudah terdaftar! Gunakan username lain.');
         return;
       }
 
@@ -267,10 +275,16 @@ export const UserManagementView: React.FC = () => {
               <h3 className="font-bold text-sm text-slate-900 dark:text-white">
                 {editingUser ? `Edit Pengguna: @${editingUser.username}` : 'Tambah Pengguna Baru'}
               </h3>
-              <button onClick={() => setShowAddModal(false)} className="text-slate-400">
+              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {formError && (
+              <div className="mb-4 p-2.5 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900 text-xs">
+                {formError}
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>

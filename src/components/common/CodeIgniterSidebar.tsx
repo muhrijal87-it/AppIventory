@@ -16,7 +16,8 @@ import {
   ShieldCheck,
   ChevronRight,
   Flame,
-  AlertCircle
+  AlertCircle,
+  Building
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useInventory } from '../../context/InventoryContext';
@@ -225,65 +226,75 @@ export const CodeIgniterSidebar: React.FC<SidebarProps> = ({
           </div>
 
           {/* Group: DATABASE MYSQL */}
-          <div>
-            <div className="px-3 pb-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Database MySQL
-            </div>
-            <nav className="space-y-0.5">
-              <button
-                onClick={() => handleNavClick('database_backup')}
-                className={navItemClass('database_backup')}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Database className="w-4 h-4 text-cyan-400" />
-                  <span>Backup &amp; Reset MySQL</span>
-                </div>
-                <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">
-                  SQL
-                </span>
-              </button>
+          {(can('backup_db') || can('reset_db') || can('query_db')) && (
+            <div>
+              <div className="px-3 pb-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Database MySQL
+              </div>
+              <nav className="space-y-0.5">
+                {(can('backup_db') || can('reset_db')) && (
+                  <button
+                    onClick={() => handleNavClick('database_backup')}
+                    className={navItemClass('database_backup')}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Database className="w-4 h-4 text-cyan-400" />
+                      <span>{can('reset_db') ? 'Backup & Reset MySQL' : 'Backup Database (SQL)'}</span>
+                    </div>
+                    <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">
+                      SQL
+                    </span>
+                  </button>
+                )}
 
-              <button
-                onClick={() => handleNavClick('database_query')}
-                className={navItemClass('database_query')}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Terminal className="w-4 h-4 text-amber-400" />
-                  <span>SQL Query Runner</span>
-                </div>
-              </button>
-            </nav>
-          </div>
+                {can('query_db') && (
+                  <button
+                    onClick={() => handleNavClick('database_query')}
+                    className={navItemClass('database_query')}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Terminal className="w-4 h-4 text-amber-400" />
+                      <span>SQL Query Runner</span>
+                    </div>
+                  </button>
+                )}
+              </nav>
+            </div>
+          )}
 
           {/* Group: KEAMANAN & PENGGUNA */}
-          <div>
-            <div className="px-3 pb-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Keamanan &amp; Akun
-            </div>
-            <nav className="space-y-0.5">
-              {can('manage_users') && (
-                <button
-                  onClick={() => handleNavClick('user_management')}
-                  className={navItemClass('user_management')}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Users className="w-4 h-4 text-indigo-400" />
-                    <span>Manajemen Pengguna</span>
-                  </div>
-                </button>
-              )}
+          {(can('manage_users') || can('view_audit_logs')) && (
+            <div>
+              <div className="px-3 pb-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Keamanan &amp; Akun
+              </div>
+              <nav className="space-y-0.5">
+                {can('manage_users') && (
+                  <button
+                    onClick={() => handleNavClick('user_management')}
+                    className={navItemClass('user_management')}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Users className="w-4 h-4 text-indigo-400" />
+                      <span>Manajemen Pengguna</span>
+                    </div>
+                  </button>
+                )}
 
-              <button
-                onClick={() => handleNavClick('activity_logs')}
-                className={navItemClass('activity_logs')}
-              >
-                <div className="flex items-center gap-2.5">
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>Log Aktivitas (Audit)</span>
-                </div>
-              </button>
-            </nav>
-          </div>
+                {can('view_audit_logs') && (
+                  <button
+                    onClick={() => handleNavClick('activity_logs')}
+                    className={navItemClass('activity_logs')}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>Log Aktivitas (Audit)</span>
+                    </div>
+                  </button>
+                )}
+              </nav>
+            </div>
+          )}
         </div>
 
         {/* Bottom System Info Widget */}

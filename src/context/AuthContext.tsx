@@ -2,6 +2,20 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole, ActivityLog } from '../types';
 import { mysql } from '../db/mysqlEngine';
 
+export type AppPermission =
+  | 'manage_users'
+  | 'reset_db'
+  | 'restore_db'
+  | 'backup_db'
+  | 'query_db'
+  | 'manage_inventory'
+  | 'delete_inventory'
+  | 'manage_master_data'
+  | 'delete_master_data'
+  | 'view_reports'
+  | 'export_reports'
+  | 'view_audit_logs';
+
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
@@ -15,7 +29,7 @@ interface AuthContextType {
   deleteUser: (id: number) => boolean;
   toggleUserStatus: (id: number) => boolean;
   logActivity: (action: string, module: string, detail: string) => void;
-  can: (action: 'manage_users' | 'reset_db' | 'backup_db' | 'manage_inventory' | 'view_reports') => boolean;
+  can: (action: AppPermission) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,13 +59,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch {
         localStorage.removeItem(CURRENT_USER_SESSION_KEY);
-      }
-    } else {
-      // Default auto-login as admin for smooth initial experience
-      const defaultAdmin = state.users.find((u) => u.username === 'admin');
-      if (defaultAdmin) {
-        setUser(defaultAdmin);
-        localStorage.setItem(CURRENT_USER_SESSION_KEY, JSON.stringify(defaultAdmin));
       }
     }
   }, []);
@@ -202,12 +209,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return updateUser(id, { is_active: !target.is_active });
   };
 
-  const can = (action: 'manage_users' | 'reset_db' | 'backup_db' | 'manage_inventory' | 'view_reports'): boolean => {
+  /**
+   * Role-Based Access Control (RBAC) Permission Matrix
+   * - admin: Full unrestricted access
+   * - staff: Operational warehouse (inventory transactions & additions, view reports)
+   * - manager: Executive oversight (reports, exports, audit logs, backup downloads)
+   */
+  const can = (action: AppPermission): boolean => {
     if (!user) return false;
+    if (!user.is_active) return false;
+
+    // 1. Administrator: Full Access
     if (user.role === 'admin') return true;
-    if (action === 'manage_inventory') return user.role === 'staff';
-    if (action === 'view_reports') return true;
-    if (action === 'backup_db') return user.role === 'manager';
+
+    // 2. Staff Gudang (Petugas Operasional Logistik)
+    if (user.role === 'staff') {
+      switch (action) {
+        case 'manage_inventory':   // Inbound, Outbound, Transfer, Add/Edit Item
+        case 'manage_master_data': // Add/Edit Category, Departemen, Satuan, Supplier
+        case 'view_reports':       // View Stock position and transactions
+          return true;
+        case 'delete_inventory':   // Restrict deletion to Administrator
+        case 'delete_master_data': // Restrict deletion to Administrator
+        case 'manage_users':
+        case 'reset_db':
+        case 'restore_db':
+        case 'query_db':
+        case 'backup_db':
+        case 'export_reports':
+        case 'view_audit_logs':
+        default:
+          return false;
+      }
+    }
+
+    // 3. Manajer Operasional (Pimpinan / Auditor)
+    if (user.role === 'manager') {
+      switch (action) {
+        case 'view_reports':     // Read-only stock and transactions
+        case 'export_reports':   // Export CSV, Excel, Print PDF
+        case 'view_audit_logs':  // View security audit trail
+        case 'backup_db':        // Download SQL backup file for audit
+          return true;
+        case 'manage_inventory': // Prevent daily stock edits by manager
+        case 'delete_inventory':
+        case 'manage_master_data':
+        case 'delete_master_data':
+        case 'manage_users':
+        case 'reset_db':
+        case 'restore_db':
+        case 'query_db':
+        default:
+          return false;
+      }
+    }
+
     return false;
   };
 

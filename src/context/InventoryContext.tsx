@@ -3,6 +3,7 @@ import {
   Barang,
   Kategori,
   Satuan,
+  Departemen,
   Supplier,
   TransaksiMasuk,
   TransaksiKeluar,
@@ -20,6 +21,7 @@ interface InventoryContextType {
   barang: Barang[];
   kategori: Kategori[];
   satuan: Satuan[];
+  departemen: Departemen[];
   supplier: Supplier[];
   transaksiMasuk: TransaksiMasuk[];
   transaksiKeluar: TransaksiKeluar[];
@@ -43,6 +45,9 @@ interface InventoryContextType {
   addSatuan: (sat: Omit<Satuan, 'id'>) => boolean;
   updateSatuan: (id: number, sat: Partial<Satuan>) => boolean;
   deleteSatuan: (id: number) => boolean;
+  addDepartemen: (dept: Omit<Departemen, 'id'>) => boolean;
+  updateDepartemen: (id: number, dept: Partial<Departemen>) => boolean;
+  deleteDepartemen: (id: number) => { success: boolean; message?: string };
   addSupplier: (sup: Omit<Supplier, 'id'>) => boolean;
   updateSupplier: (id: number, sup: Partial<Supplier>) => boolean;
   deleteSupplier: (id: number) => boolean;
@@ -502,6 +507,61 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return true;
   };
 
+  // DEPARTEMEN / DIVISI CRUD
+  const addDepartemen = (deptData: Omit<Departemen, 'id'>): boolean => {
+    const state = mysql.getState();
+    if (!state.departemen) state.departemen = [];
+    const newId = state.departemen.length > 0 ? Math.max(...state.departemen.map((d) => d.id)) + 1 : 1;
+    state.departemen.push({ ...deptData, id: newId });
+    mysql.setState(state);
+    reloadState();
+    logActivity('INSERT_DEPARTEMEN', 'MASTER_DATA', `Menambahkan departemen: ${deptData.nama_departemen}`);
+    setFlash('success', `Departemen '${deptData.nama_departemen}' berhasil ditambahkan.`);
+    return true;
+  };
+
+  const updateDepartemen = (id: number, deptData: Partial<Departemen>): boolean => {
+    const state = mysql.getState();
+    if (!state.departemen) return false;
+    const oldDept = state.departemen.find((d) => d.id === id);
+    const oldName = oldDept?.nama_departemen;
+
+    state.departemen = state.departemen.map((d) => (d.id === id ? { ...d, ...deptData } : d));
+
+    // Update transactions referencing old name
+    if (oldName && deptData.nama_departemen && oldName !== deptData.nama_departemen) {
+      state.transaksi_keluar = state.transaksi_keluar.map((t) =>
+        t.departemen === oldName ? { ...t, departemen: deptData.nama_departemen! } : t
+      );
+    }
+
+    mysql.setState(state);
+    reloadState();
+    logActivity('UPDATE_DEPARTEMEN', 'MASTER_DATA', `Memperbarui departemen ID #${id}`);
+    setFlash('info', `Data departemen berhasil diperbarui.`);
+    return true;
+  };
+
+  const deleteDepartemen = (id: number): { success: boolean; message?: string } => {
+    const state = mysql.getState();
+    if (!state.departemen) return { success: false, message: 'Data departemen tidak ditemukan.' };
+    const deptToDelete = state.departemen.find((d) => d.id === id);
+    if (!deptToDelete) return { success: false, message: 'Departemen tidak ditemukan.' };
+
+    const inUse = state.transaksi_keluar.some((t) => t.departemen === deptToDelete.nama_departemen);
+    if (inUse) {
+      setFlash('error', `Departemen '${deptToDelete.nama_departemen}' tidak dapat dihapus karena masih digunakan pada data transaksi barang keluar.`);
+      return { success: false, message: 'Departemen masih memiliki relasi transaksi pengeluaran.' };
+    }
+
+    state.departemen = state.departemen.filter((d) => d.id !== id);
+    mysql.setState(state);
+    reloadState();
+    logActivity('DELETE_DEPARTEMEN', 'MASTER_DATA', `Menghapus departemen: ${deptToDelete.nama_departemen}`);
+    setFlash('warning', `Departemen '${deptToDelete.nama_departemen}' berhasil dihapus.`);
+    return { success: true };
+  };
+
   // SUPPLIER CRUD
   const addSupplier = (supData: Omit<Supplier, 'id'>): boolean => {
     const state = mysql.getState();
@@ -549,6 +609,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         barang: dbState.barang,
         kategori: dbState.kategori,
         satuan: dbState.satuan,
+        departemen: dbState.departemen || [],
         supplier: dbState.supplier,
         transaksiMasuk: dbState.transaksi_masuk,
         transaksiKeluar: dbState.transaksi_keluar,
@@ -569,6 +630,9 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         addSatuan,
         updateSatuan,
         deleteSatuan,
+        addDepartemen,
+        updateDepartemen,
+        deleteDepartemen,
         addSupplier,
         updateSupplier,
         deleteSupplier,

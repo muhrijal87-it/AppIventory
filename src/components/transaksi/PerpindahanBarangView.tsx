@@ -24,8 +24,12 @@ import { TransaksiKeluar } from '../../types';
 import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
 
-export const PerpindahanBarangView: React.FC = () => {
-  const { transaksiKeluar, barang, addTransaksiKeluar } = useInventory();
+interface PerpindahanBarangViewProps {
+  onNavigate?: (view: string) => void;
+}
+
+export const PerpindahanBarangView: React.FC<PerpindahanBarangViewProps> = ({ onNavigate }) => {
+  const { transaksiKeluar, barang, departemen: masterDepartemen, addTransaksiKeluar } = useInventory();
   const { user, users, can } = useAuth();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -35,27 +39,35 @@ export const PerpindahanBarangView: React.FC = () => {
   const [viewingImage, setViewingImage] = useState<{ title: string; url: string } | null>(null);
   const [validationError, setValidationError] = useState('');
 
+  // Dynamic departemen list from tbl_departemen
+  const departemenList =
+    masterDepartemen && masterDepartemen.length > 0
+      ? masterDepartemen.map((d) => d.nama_departemen)
+      : [
+          'Divisi Pengembangan TI',
+          'Operasional & Logistik',
+          'Finance & Akuntansi',
+          'Human Resources (HRD) & GA',
+          'Pemasaran & Penjualan (Marketing)',
+          'Divisi Pemeliharaan / Maintenance',
+          'Manajemen Direksi',
+        ];
+
   // Form State for new Perpindahan Barang
   const [noTransaksi, setNoTransaksi] = useState('');
   const [tanggal, setTanggal] = useState(new Date().toISOString().slice(0, 10));
   const [penerima, setPenerima] = useState('');
-  const [departemen, setDepartemen] = useState('Divisi Pengembangan TI');
+  const [departemen, setDepartemen] = useState(
+    masterDepartemen && masterDepartemen.length > 0
+      ? masterDepartemen[0].nama_departemen
+      : 'Divisi Pengembangan TI'
+  );
   const [barangId, setBarangId] = useState<number>(barang[0]?.id || 1);
   const [jumlah, setJumlah] = useState<number>(1);
   const [model, setModel] = useState('');
   const [serialNumber, setSerialNumber] = useState('');
   const [keperluan, setKeperluan] = useState('');
   const [fotoBukti, setFotoBukti] = useState<string>('');
-
-  const departemenList = [
-    'Divisi Pengembangan TI',
-    'Operasional & Logistik',
-    'Finance & Akuntansi',
-    'Human Resources (HRD) & GA',
-    'Pemasaran & Penjualan (Marketing)',
-    'Divisi Pemeliharaan / Maintenance',
-    'Manajemen Direksi',
-  ];
 
   const handleOpenAdd = () => {
     const nextSeq = transaksiKeluar.length + 1;
@@ -67,7 +79,7 @@ export const PerpindahanBarangView: React.FC = () => {
     setNoTransaksi(`TRF-${yyyymm}-${String(nextSeq).padStart(3, '0')}`);
     setTanggal(new Date().toISOString().slice(0, 10));
     setPenerima('');
-    setDepartemen('Divisi Pengembangan TI');
+    setDepartemen(departemenList[0] || 'Divisi Pengembangan TI');
     setBarangId(initialId);
     setJumlah(1);
     setModel(initialItem?.model || '');
@@ -120,7 +132,7 @@ export const PerpindahanBarangView: React.FC = () => {
     if (!file) return;
 
     if (file.size > 2 * 1024 * 1024) {
-      alert('Ukuran foto terlalu besar! Maksimal 2 MB.');
+      setValidationError('Ukuran foto terlalu besar! Maksimal 2 MB.');
       return;
     }
 
@@ -128,6 +140,7 @@ export const PerpindahanBarangView: React.FC = () => {
     reader.onload = (event) => {
       const dataUrl = event.target?.result as string;
       setFotoBukti(dataUrl);
+      setValidationError('');
     };
     reader.readAsDataURL(file);
   };

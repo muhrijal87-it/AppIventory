@@ -6,7 +6,6 @@ import {
   Printer,
   X,
   AlertCircle,
-  Building,
   UserCheck,
   Image as ImageIcon,
   Upload,
@@ -29,7 +28,7 @@ interface TransaksiKeluarViewProps {
 }
 
 export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavigate }) => {
-  const { transaksiKeluar, barang, addTransaksiKeluar } = useInventory();
+  const { transaksiKeluar, barang, departemen: masterDepartemen, addTransaksiKeluar } = useInventory();
   const { user, users, can } = useAuth();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -42,7 +41,11 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
   const [noTransaksi, setNoTransaksi] = useState('');
   const [tanggal, setTanggal] = useState(new Date().toISOString().slice(0, 10));
   const [penerima, setPenerima] = useState('');
-  const [departemen, setDepartemen] = useState('Divisi Pengembangan TI');
+  const [departemen, setDepartemen] = useState(
+    masterDepartemen && masterDepartemen.length > 0
+      ? masterDepartemen[0].nama_departemen
+      : 'Divisi Pengembangan TI'
+  );
   const [barangId, setBarangId] = useState<number>(barang[0]?.id || 1);
   const [jumlah, setJumlah] = useState<number>(1);
   const [model, setModel] = useState('');
@@ -55,7 +58,6 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
   const [transferNoTransaksi, setTransferNoTransaksi] = useState('');
   const [transferTanggal, setTransferTanggal] = useState(new Date().toISOString().slice(0, 10));
   const [transferPenerimaBaru, setTransferPenerimaBaru] = useState('');
-  const [transferDeptTujuan, setTransferDeptTujuan] = useState('Divisi Pemeliharaan / Maintenance');
   const [transferJumlah, setTransferJumlah] = useState(1);
   const [transferModel, setTransferModel] = useState('');
   const [transferSN, setTransferSN] = useState('');
@@ -63,15 +65,18 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
   const [transferFotoBukti, setTransferFotoBukti] = useState<string>('');
   const [transferError, setTransferError] = useState('');
 
-  const departemenList = [
-    'Divisi Pengembangan TI',
-    'Operasional & Logistik',
-    'Finance & Akuntansi',
-    'Human Resources (HRD) & GA',
-    'Pemasaran & Penjualan (Marketing)',
-    'Divisi Pemeliharaan / Maintenance',
-    'Manajemen Direksi',
-  ];
+  const departemenList =
+    masterDepartemen && masterDepartemen.length > 0
+      ? masterDepartemen.map((d) => d.nama_departemen)
+      : [
+          'Divisi Pengembangan TI',
+          'Operasional & Logistik',
+          'Finance & Akuntansi',
+          'Human Resources (HRD) & GA',
+          'Pemasaran & Penjualan (Marketing)',
+          'Divisi Pemeliharaan / Maintenance',
+          'Manajemen Direksi',
+        ];
 
   const handleOpenAdd = () => {
     const nextSeq = transaksiKeluar.length + 1;
@@ -83,7 +88,7 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
     setNoTransaksi(`OUT-${yyyymm}-${String(nextSeq).padStart(3, '0')}`);
     setTanggal(new Date().toISOString().slice(0, 10));
     setPenerima('');
-    setDepartemen('Divisi Pengembangan TI');
+    setDepartemen(departemenList[0] || 'Divisi Pengembangan TI');
     setBarangId(initialId);
     setJumlah(1);
     setModel(initialItem?.model || '');
@@ -165,14 +170,10 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
     setTransferTanggal(new Date().toISOString().slice(0, 10));
     setTransferPenerimaBaru('');
 
-    // Default target department different from current source
-    const defaultTarget = departemenList.find((d) => d !== trx.departemen) || 'Divisi Pemeliharaan / Maintenance';
-    setTransferDeptTujuan(defaultTarget);
-
     setTransferJumlah(trx.jumlah || 1);
     setTransferModel(trx.model || targetItem?.model || '');
     setTransferSN(trx.serial_number || '');
-    setTransferKeperluan(`Perpindahan unit operasional dari ${trx.departemen} (PIC: ${trx.penerima}) ke ${defaultTarget}`);
+    setTransferKeperluan(`Perpindahan serah terima unit dari ${trx.penerima}`);
     setTransferFotoBukti('');
     setTransferError('');
   };
@@ -200,12 +201,7 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
     if (!transferModalItem) return;
 
     if (!transferPenerimaBaru.trim()) {
-      setTransferError('Nama Penerima / PIC Baru di departemen tujuan wajib diisi!');
-      return;
-    }
-
-    if (transferDeptTujuan === transferModalItem.departemen) {
-      setTransferError('Departemen tujuan harus berbeda dari departemen asal saat ini!');
+      setTransferError('Nama Penerima / PIC Baru wajib diisi!');
       return;
     }
 
@@ -214,12 +210,12 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
       no_transaksi: transferNoTransaksi,
       tanggal: transferTanggal,
       penerima: transferPenerimaBaru.trim(),
-      departemen: transferDeptTujuan,
+      departemen: '-',
       barang_id: transferModalItem.barang_id,
       jumlah: transferJumlah > 0 ? transferJumlah : 1,
       model: transferModel.trim() || undefined,
       serial_number: transferSN.trim() || undefined,
-      keperluan: transferKeperluan.trim() || `Perpindahan dari ${transferModalItem.departemen} ke ${transferDeptTujuan}`,
+      keperluan: transferKeperluan.trim() || `Perpindahan serah terima unit ke ${transferPenerimaBaru.trim()}`,
       foto_bukti: transferFotoBukti || undefined,
       petugas_id: user?.id || 1,
       created_at: new Date().toISOString(),
@@ -256,7 +252,7 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
       no_transaksi: noTransaksi,
       tanggal,
       penerima,
-      departemen,
+      departemen: '-',
       barang_id: Number(barangId),
       jumlah: Number(jumlah),
       model: model.trim() || undefined,
@@ -340,7 +336,6 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
                 <th className="px-3.5 py-3 whitespace-nowrap">No. Transaksi</th>
                 <th className="px-3 py-3 whitespace-nowrap">Tanggal</th>
                 <th className="px-3 py-3 whitespace-nowrap">Penerima</th>
-                <th className="px-3 py-3 whitespace-nowrap">Departemen / Divisi</th>
                 <th className="px-3.5 py-3 whitespace-nowrap">Barang Dikeluarkan</th>
                 <th className="px-2.5 py-3 text-right whitespace-nowrap">Jumlah</th>
                 <th className="px-2.5 py-3 text-center whitespace-nowrap">Foto Bukti</th>
@@ -353,7 +348,7 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="py-10 text-center text-slate-400">
+                  <td colSpan={10} className="py-10 text-center text-slate-400">
                     Belum ada rekaman transaksi barang keluar yang cocok.
                   </td>
                 </tr>
@@ -372,9 +367,6 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
                       </td>
                       <td className="px-3 py-2.5 font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">
                         {trx.penerima}
-                      </td>
-                      <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                        {trx.departemen}
                       </td>
                       <td className="px-3.5 py-2.5">
                         <div className="font-semibold text-slate-900 dark:text-white whitespace-nowrap">
@@ -506,37 +498,18 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Nama Penerima <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={penerima}
-                    onChange={(e) => setPenerima(e.target.value)}
-                    placeholder="Contoh: Bpk. Bambang Sutrisno"
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Departemen / Divisi Pemohon <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={departemen}
-                    onChange={(e) => setDepartemen(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                  >
-                    {departemenList.map((dep) => (
-                      <option key={dep} value={dep}>
-                        {dep}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Nama Penerima <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={penerima}
+                  onChange={(e) => setPenerima(e.target.value)}
+                  placeholder="Contoh: Bpk. Bambang Sutrisno"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
+                />
               </div>
 
               <div>
@@ -908,39 +881,6 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
                 </div>
               </div>
 
-              {/* Asal vs Tujuan Visual Row */}
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                <div>
-                  <span className="text-[10px] font-bold uppercase text-slate-400 block mb-1">
-                    Departemen Asal (Saat Ini)
-                  </span>
-                  <div className="px-3 py-2 bg-white dark:bg-slate-850 rounded-lg border border-slate-200 dark:border-slate-700 font-medium text-slate-700 dark:text-slate-300">
-                    {transferModalItem.departemen}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold uppercase text-purple-700 dark:text-purple-300 mb-1 flex items-center gap-1">
-                    <ArrowRight className="w-3.5 h-3.5" />
-                    Departemen Tujuan Baru <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={transferDeptTujuan}
-                    onChange={(e) => {
-                      setTransferDeptTujuan(e.target.value);
-                      setTransferKeperluan(`Perpindahan unit ${transferSN ? `SN: ${transferSN}` : ''} dari ${transferModalItem.departemen} ke ${e.target.value}`);
-                    }}
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-850 border border-purple-300 dark:border-purple-700 rounded-lg text-slate-900 dark:text-white font-medium focus:outline-hidden focus:ring-1 focus:ring-purple-500"
-                  >
-                    {departemenList.map((dept) => (
-                      <option key={dept} value={dept} disabled={dept === transferModalItem.departemen}>
-                        {dept} {dept === transferModalItem.departemen ? '(Asal)' : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
@@ -949,7 +889,7 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
                   <input
                     type="text"
                     required
-                    placeholder="Contoh: Bpk. Bambang Sutrisno"
+                    placeholder="Contoh: Riko Gunawan, S.Kom"
                     value={transferPenerimaBaru}
                     onChange={(e) => setTransferPenerimaBaru(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
@@ -1111,7 +1051,9 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
               <div>
                 <span className="text-slate-400 block">Nama Penerima:</span>
                 <span className="font-bold text-slate-800">{selectedDO.penerima}</span>
-                <p className="text-slate-600">Departemen: {selectedDO.departemen}</p>
+                {selectedDO.departemen && selectedDO.departemen !== '-' && (
+                  <p className="text-slate-600">Departemen: {selectedDO.departemen}</p>
+                )}
               </div>
               <div>
                 <span className="text-slate-400 block">Keperluan:</span>

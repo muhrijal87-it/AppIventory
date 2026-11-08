@@ -37,6 +37,7 @@ export const DatabaseManagerView: React.FC = () => {
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetType, setResetType] = useState<'default' | 'clean'>('default');
   const [resetConfirmText, setResetConfirmText] = useState('');
+  const [resetError, setResetError] = useState('');
 
   // Selected table inspector
   const [inspectedTable, setInspectedTable] = useState<string>('tbl_barang');
@@ -115,7 +116,7 @@ export const DatabaseManagerView: React.FC = () => {
 
   const handleConfirmReset = () => {
     if (resetConfirmText.toLowerCase() !== 'reset') {
-      alert('Ketik "RESET" untuk mengonfirmasi tindakan ini.');
+      setResetError('Ketik "RESET" dengan benar untuk mengonfirmasi tindakan ini.');
       return;
     }
 
@@ -123,6 +124,7 @@ export const DatabaseManagerView: React.FC = () => {
     reloadState();
     setShowResetModal(false);
     setResetConfirmText('');
+    setResetError('');
     setFlash(
       'warning',
       resetType === 'default'
@@ -218,17 +220,19 @@ export const DatabaseManagerView: React.FC = () => {
             <span>Cadangkan Database (Backup)</span>
           </button>
 
-          <button
-            onClick={() => setActiveTab('restore')}
-            className={`flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
-              activeTab === 'restore'
-                ? 'border-cyan-600 text-cyan-600 dark:text-cyan-400 font-semibold bg-white dark:bg-slate-900 rounded-t-lg'
-                : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <Upload className="w-4 h-4" />
-            <span>Pulihkan Database (Restore)</span>
-          </button>
+          {can('restore_db') && (
+            <button
+              onClick={() => setActiveTab('restore')}
+              className={`flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
+                activeTab === 'restore'
+                  ? 'border-cyan-600 text-cyan-600 dark:text-cyan-400 font-semibold bg-white dark:bg-slate-900 rounded-t-lg'
+                  : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Upload className="w-4 h-4" />
+              <span>Pulihkan Database (Restore)</span>
+            </button>
+          )}
 
           <button
             onClick={() => setActiveTab('tables')}
@@ -646,13 +650,21 @@ export const DatabaseManagerView: React.FC = () => {
             </p>
 
             <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
+              {resetError && (
+                <div className="mb-3 p-2 rounded bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900 text-[11px]">
+                  {resetError}
+                </div>
+              )}
               <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1.5">
                 Ketik kata <span className="font-mono font-bold text-red-600">RESET</span> untuk melanjutkan:
               </label>
               <input
                 type="text"
                 value={resetConfirmText}
-                onChange={(e) => setResetConfirmText(e.target.value)}
+                onChange={(e) => {
+                  setResetConfirmText(e.target.value);
+                  setResetError('');
+                }}
                 placeholder="Ketik RESET"
                 className="w-full px-3 py-2 text-xs font-mono uppercase bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-hidden focus:border-red-500"
               />

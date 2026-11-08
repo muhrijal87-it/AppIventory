@@ -13,7 +13,7 @@ import {
   MapPin,
   FolderPlus
 } from 'lucide-react';
-import { Kategori, Satuan, Supplier } from '../../types';
+import { Kategori, Satuan, Supplier, Departemen } from '../../types';
 import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
 
@@ -37,7 +37,9 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
   } = useInventory();
   const { can } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'kategori' | 'satuan' | 'supplier'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'kategori' | 'satuan' | 'supplier'>(
+    initialTab === 'kategori' || initialTab === 'satuan' || initialTab === 'supplier' ? initialTab : 'kategori'
+  );
 
   // Kategori Modal & Form
   const [showKatModal, setShowKatModal] = useState(false);
@@ -207,7 +209,7 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
           </p>
         </div>
 
-        {can('manage_inventory') && (
+        {can('manage_master_data') && (
           <div className="flex items-center gap-2">
             {activeTab === 'kategori' && (
               <button
@@ -242,10 +244,10 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
 
       {/* Tab Navigation */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
-        <div className="flex border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 pt-2">
+        <div className="flex border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 pt-2 overflow-x-auto scrollbar-thin">
           <button
             onClick={() => setActiveTab('kategori')}
-            className={`flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
+            className={`flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
               activeTab === 'kategori'
                 ? 'border-red-600 text-red-600 dark:text-red-400 font-semibold bg-white dark:bg-slate-900 rounded-t-lg'
                 : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -257,7 +259,7 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
 
           <button
             onClick={() => setActiveTab('satuan')}
-            className={`flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
+            className={`flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
               activeTab === 'satuan'
                 ? 'border-red-600 text-red-600 dark:text-red-400 font-semibold bg-white dark:bg-slate-900 rounded-t-lg'
                 : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -269,7 +271,7 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
 
           <button
             onClick={() => setActiveTab('supplier')}
-            className={`flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
+            className={`flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
               activeTab === 'supplier'
                 ? 'border-red-600 text-red-600 dark:text-red-400 font-semibold bg-white dark:bg-slate-900 rounded-t-lg'
                 : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -311,23 +313,26 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
                         {itemCount} Barang
                       </td>
                       <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {can('manage_inventory') && (
-                          <div className="flex items-center justify-center gap-2">
+                        <div className="flex items-center justify-center gap-2">
+                          {can('manage_master_data') && (
                             <button
                               onClick={() => openEditKategori(k)}
                               className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                              title="Edit Kategori"
                             >
                               <Edit className="w-3.5 h-3.5" />
                             </button>
+                          )}
+                          {can('delete_master_data') && (
                             <button
                               onClick={() => setDeleteConfirm({ type: 'kategori', id: k.id, title: k.nama_kategori })}
                               className="p-1 text-red-600 hover:bg-red-50 rounded"
-                              title="Hapus Kategori"
+                              title="Hapus Kategori (Hanya Administrator)"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -364,23 +369,26 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
                         {itemCount} Barang
                       </td>
                       <td className="px-4 py-3 text-center whitespace-nowrap">
-                        {can('manage_inventory') && (
-                          <div className="flex items-center justify-center gap-2">
+                        <div className="flex items-center justify-center gap-2">
+                          {can('manage_master_data') && (
                             <button
                               onClick={() => openEditSatuan(s)}
                               className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                              title="Edit Satuan"
                             >
                               <Edit className="w-3.5 h-3.5" />
                             </button>
+                          )}
+                          {can('delete_master_data') && (
                             <button
                               onClick={() => setDeleteConfirm({ type: 'satuan', id: s.id, title: s.nama_satuan })}
                               className="p-1 text-red-600 hover:bg-red-50 rounded"
-                              title="Hapus Satuan"
+                              title="Hapus Satuan (Hanya Administrator)"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -424,23 +432,26 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
                       {sup.alamat}
                     </td>
                     <td className="px-4 py-3 text-center whitespace-nowrap">
-                      {can('manage_inventory') && (
-                        <div className="flex items-center justify-center gap-2">
+                      <div className="flex items-center justify-center gap-2">
+                        {can('manage_master_data') && (
                           <button
                             onClick={() => openEditSupplier(sup)}
                             className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                            title="Edit Pemasok"
                           >
                             <Edit className="w-3.5 h-3.5" />
                           </button>
+                        )}
+                        {can('delete_master_data') && (
                           <button
                             onClick={() => setDeleteConfirm({ type: 'supplier', id: sup.id, title: sup.nama_supplier })}
                             className="p-1 text-red-600 hover:bg-red-50 rounded"
-                            title="Hapus Pemasok"
+                            title="Hapus Pemasok (Hanya Administrator)"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

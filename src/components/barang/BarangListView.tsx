@@ -348,7 +348,6 @@ export const BarangListView: React.FC = () => {
                 <th className="px-4 py-3">Kode / SKU</th>
                 <th className="px-4 py-3">Barang &amp; Foto</th>
                 <th className="px-4 py-3">Kategori</th>
-                <th className="px-4 py-3 text-right">Stok Fisik</th>
                 <th className="px-4 py-3">Lokasi Rak</th>
                 <th className="px-4 py-3 text-center">Kondisi</th>
                 <th className="px-4 py-3 text-center">Aksi</th>
@@ -357,16 +356,13 @@ export const BarangListView: React.FC = () => {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                  <td colSpan={6} className="py-12 text-center text-slate-400">
                     Tidak ada barang yang cocok dengan kriteria pencarian.
                   </td>
                 </tr>
               ) : (
                 filteredItems.map((item) => {
                   const kat = kategori.find((k) => k.id === item.kategori_id);
-                  const sat = satuan.find((s) => s.id === item.satuan_id);
-                  const isLow = item.stok > 0 && item.stok <= item.stok_min;
-                  const isOut = item.stok === 0;
 
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-850 transition-colors">
@@ -402,40 +398,11 @@ export const BarangListView: React.FC = () => {
                             <div className="text-[11px] text-slate-400 truncate max-w-xs mt-0.5">
                               {item.model ? `Model: ${item.model}` : item.deskripsi || '-'}
                             </div>
-                            {item.serial_number && (
-                              <div className="text-[10px] text-purple-600 dark:text-purple-400 font-mono mt-0.5 font-medium truncate max-w-xs">
-                                SN: {item.serial_number}
-                              </div>
-                            )}
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">
                         {kat?.nama_kategori || '-'}
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono whitespace-nowrap">
-                        <span
-                          className={`font-bold text-sm ${
-                            isOut
-                              ? 'text-red-600'
-                              : isLow
-                              ? 'text-amber-600 dark:text-amber-400'
-                              : 'text-slate-900 dark:text-white'
-                          }`}
-                        >
-                          {item.stok}
-                        </span>{' '}
-                        <span className="text-[11px] text-slate-400">{sat?.nama_satuan || 'Unit'}</span>
-                        {isLow && (
-                          <span className="block text-[10px] text-amber-600 font-sans font-medium">
-                            Kritis (Min: {item.stok_min})
-                          </span>
-                        )}
-                        {isOut && (
-                          <span className="block text-[10px] text-red-600 font-sans font-medium">
-                            Habis
-                          </span>
-                        )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-slate-600 dark:text-slate-300">
                         <div className="flex items-center gap-1.5 text-xs">
@@ -466,22 +433,22 @@ export const BarangListView: React.FC = () => {
                             <Eye className="w-3.5 h-3.5" />
                           </button>
                           {can('manage_inventory') && (
-                            <>
-                              <button
-                                onClick={() => handleOpenEdit(item)}
-                                className="p-1.5 rounded hover:bg-blue-100 dark:hover:bg-blue-950 text-blue-600 dark:text-blue-400 transition-colors"
-                                title="Edit Data Barang"
-                              >
-                                <Edit className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(item)}
-                                className="p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-950 text-red-600 dark:text-red-400 transition-colors"
-                                title="Hapus Barang"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </>
+                            <button
+                              onClick={() => handleOpenEdit(item)}
+                              className="p-1.5 rounded hover:bg-blue-100 dark:hover:bg-blue-950 text-blue-600 dark:text-blue-400 transition-colors"
+                              title="Edit Data Barang"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {can('delete_inventory') && (
+                            <button
+                              onClick={() => handleDelete(item)}
+                              className="p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-950 text-red-600 dark:text-red-400 transition-colors"
+                              title="Hapus Barang (Hanya Administrator)"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           )}
                         </div>
                       </td>
@@ -615,38 +582,6 @@ export const BarangListView: React.FC = () => {
                   </select>
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Stok Sekarang (Fisik) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    value={formState.stok}
-                    onChange={(e) => setFormState({ ...formState, stok: Number(e.target.value) })}
-                    className="w-full px-3 py-2 font-mono bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Stok Minimum (Safety Stock) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    value={formState.stok_min}
-                    onChange={(e) => setFormState({ ...formState, stok_min: Number(e.target.value) })}
-                    className="w-full px-3 py-2 font-mono bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                  />
-                </div>
-              </div>
-
-
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>

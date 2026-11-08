@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useInventory } from '../../context/InventoryContext';
+import { NotificationBell } from '../notifications/NotificationBell';
 
 interface HeaderProps {
   currentView: string;
@@ -52,6 +53,7 @@ export const CodeIgniterHeader: React.FC<HeaderProps> = ({
         return ['Pelacakan Alur', 'Histori Barang Real-Time (Dari ➔ Ke)'];
       case 'master_kategori':
       case 'master_supplier':
+      case 'master_departemen':
         return ['Master Data', 'Sub Kategori'];
       case 'laporan_stok':
         return ['Laporan', 'Laporan Posisi Stok Fisik'];
@@ -183,6 +185,9 @@ export const CodeIgniterHeader: React.FC<HeaderProps> = ({
               </div>
             )}
           </div>
+
+          {/* Modern Notification Bell */}
+          <NotificationBell onNavigate={onNavigate} />
 
           {/* User Account Menu */}
           <div className="relative">

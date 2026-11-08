@@ -2,6 +2,7 @@ import {
   User,
   Kategori,
   Satuan,
+  Departemen,
   Supplier,
   Barang,
   TransaksiMasuk,
@@ -18,6 +19,7 @@ export interface DatabaseState {
   users: User[];
   kategori: Kategori[];
   satuan: Satuan[];
+  departemen: Departemen[];
   supplier: Supplier[];
   barang: Barang[];
   transaksi_masuk: TransaksiMasuk[];
@@ -79,6 +81,64 @@ export const INITIAL_SEED_DATA: DatabaseState = {
     { id: 5, kode_satuan: 'RIM', nama_satuan: 'Rim' },
     { id: 6, kode_satuan: 'ROLL', nama_satuan: 'Roll' },
     { id: 7, kode_satuan: 'SET', nama_satuan: 'Set' },
+  ],
+  departemen: [
+    {
+      id: 1,
+      kode_departemen: 'DPT-01',
+      nama_departemen: 'Divisi Pengembangan TI',
+      penanggung_jawab: 'Riko Gunawan, S.Kom',
+      lokasi_gedung: 'Gedung A - Lantai 3',
+      keterangan: 'Divisi rekayasa perangkat lunak, sistem informasi, dan infrastruktur IT jaringan.',
+    },
+    {
+      id: 2,
+      kode_departemen: 'DPT-02',
+      nama_departemen: 'Operasional & Logistik',
+      penanggung_jawab: 'Hendra Wijaya, S.T',
+      lokasi_gedung: 'Gedung B - Lantai 1 (Gudang Utama)',
+      keterangan: 'Divisi pengelolaan arus barang, armada logistik, dan pergudangan.',
+    },
+    {
+      id: 3,
+      kode_departemen: 'DPT-03',
+      nama_departemen: 'Finance & Akuntansi',
+      penanggung_jawab: 'Dewi Anggraini, S.E, Ak',
+      lokasi_gedung: 'Gedung A - Lantai 2',
+      keterangan: 'Divisi pencatatan keuangan, anggaran operasional, kas, dan perpajakan perusahaan.',
+    },
+    {
+      id: 4,
+      kode_departemen: 'DPT-04',
+      nama_departemen: 'Human Resources (HRD) & GA',
+      penanggung_jawab: 'Bambang Sutrisno, M.Psi',
+      lokasi_gedung: 'Gedung A - Lantai 2',
+      keterangan: 'Divisi pengelolaan sumber daya manusia, perizinan, dan fasilitas umum kantor.',
+    },
+    {
+      id: 5,
+      kode_departemen: 'DPT-05',
+      nama_departemen: 'Pemasaran & Penjualan (Marketing)',
+      penanggung_jawab: 'Nadia Safitri, S.I.Kom',
+      lokasi_gedung: 'Gedung C - Lantai 1',
+      keterangan: 'Divisi promosi produk, relasi klien, dan pengembangan pasar komersial.',
+    },
+    {
+      id: 6,
+      kode_departemen: 'DPT-06',
+      nama_departemen: 'Divisi Pemeliharaan / Maintenance',
+      penanggung_jawab: 'Supriyanto (Lead Technician)',
+      lokasi_gedung: 'Bengkel & Workshop Gedung B',
+      keterangan: 'Divisi servis, perbaikan teknis, pemeliharaan genset, dan perawatan aset.',
+    },
+    {
+      id: 7,
+      kode_departemen: 'DPT-07',
+      nama_departemen: 'Manajemen Direksi',
+      penanggung_jawab: 'Sekretariat Direksi',
+      lokasi_gedung: 'Gedung Utama - Lantai 4 (Executive Wing)',
+      keterangan: 'Ruang kerja dewan direksi, rapat pimpinan eksekutif, dan penentu kebijakan.',
+    },
   ],
   supplier: [
     {
@@ -579,6 +639,18 @@ export const TABLE_DEFINITIONS: TableInfo[] = [
     rowCount: 7,
   },
   {
+    name: 'tbl_departemen',
+    columns: [
+      { name: 'id', type: 'INT(11)', key: 'PRI', extra: 'auto_increment' },
+      { name: 'kode_departemen', type: 'VARCHAR(30)', key: 'UNI' },
+      { name: 'nama_departemen', type: 'VARCHAR(100)' },
+      { name: 'penanggung_jawab', type: 'VARCHAR(100)' },
+      { name: 'lokasi_gedung', type: 'VARCHAR(100)' },
+      { name: 'keterangan', type: 'TEXT' },
+    ],
+    rowCount: 7,
+  },
+  {
     name: 'tbl_supplier',
     columns: [
       { name: 'id', type: 'INT(11)', key: 'PRI', extra: 'auto_increment' },
@@ -714,6 +786,9 @@ class MySQLEngine {
             };
           });
         }
+        if (!parsed.departemen || !Array.isArray(parsed.departemen) || parsed.departemen.length === 0) {
+          parsed.departemen = JSON.parse(JSON.stringify(INITIAL_SEED_DATA.departemen));
+        }
         return parsed;
       }
     } catch {
@@ -805,6 +880,16 @@ class MySQLEngine {
       'id INT(11) AUTO_INCREMENT PRIMARY KEY',
       'kode_satuan VARCHAR(10) NOT NULL UNIQUE',
       'nama_satuan VARCHAR(50) NOT NULL',
+    ]);
+
+    // Dump departemen
+    sql += this.tableToSQL('tbl_departemen', this.state.departemen, [
+      'id INT(11) AUTO_INCREMENT PRIMARY KEY',
+      'kode_departemen VARCHAR(20) NOT NULL UNIQUE',
+      'nama_departemen VARCHAR(100) NOT NULL',
+      'penanggung_jawab VARCHAR(100) NULL',
+      'lokasi_gedung VARCHAR(100) NULL',
+      'keterangan TEXT NULL',
     ]);
 
     // Dump supplier
@@ -951,6 +1036,7 @@ class MySQLEngine {
         users: currentUser ? [currentUser] : JSON.parse(JSON.stringify(INITIAL_SEED_DATA.users)),
         kategori: [],
         satuan: [],
+        departemen: [],
         supplier: [],
         barang: [],
         transaksi_masuk: [],
@@ -1012,6 +1098,9 @@ class MySQLEngine {
             }
             if (Array.isArray(stateData.satuan || stateData.tbl_satuan)) {
               this.state.satuan = stateData.satuan || stateData.tbl_satuan;
+            }
+            if (Array.isArray(stateData.departemen || stateData.tbl_departemen)) {
+              this.state.departemen = stateData.departemen || stateData.tbl_departemen;
             }
             if (Array.isArray(stateData.supplier || stateData.tbl_supplier)) {
               this.state.supplier = stateData.supplier || stateData.tbl_supplier;
@@ -1076,6 +1165,8 @@ class MySQLEngine {
         kategori: 'kategori',
         tbl_satuan: 'satuan',
         satuan: 'satuan',
+        tbl_departemen: 'departemen',
+        departemen: 'departemen',
         tbl_supplier: 'supplier',
         supplier: 'supplier',
         tbl_barang: 'barang',
@@ -1094,6 +1185,7 @@ class MySQLEngine {
         users: [],
         kategori: [],
         satuan: [],
+        departemen: [],
         supplier: [],
         barang: [],
         transaksi_masuk: [],
@@ -1107,6 +1199,7 @@ class MySQLEngine {
         users: ['id', 'username', 'nama_lengkap', 'email', 'role', 'is_active', 'created_at', 'last_login'],
         kategori: ['id', 'kode_kategori', 'nama_kategori', 'deskripsi'],
         satuan: ['id', 'kode_satuan', 'nama_satuan'],
+        departemen: ['id', 'kode_departemen', 'nama_departemen', 'penanggung_jawab', 'lokasi_gedung', 'keterangan'],
         supplier: ['id', 'kode_supplier', 'nama_supplier', 'kontak_pic', 'no_telepon', 'email', 'alamat'],
         barang: ['id', 'kode_barang', 'nama_barang', 'kategori_id', 'satuan_id', 'stok', 'stok_min', 'harga_beli', 'harga_jual', 'lokasi_rak', 'kondisi', 'deskripsi', 'barcode', 'model', 'serial_number', 'foto', 'created_at', 'updated_at'],
         transaksi_masuk: ['id', 'no_faktur', 'tanggal', 'supplier_id', 'barang_id', 'jumlah', 'harga_satuan', 'total_harga', 'catatan', 'petugas_id', 'foto_nota', 'created_at'],
@@ -1206,6 +1299,7 @@ class MySQLEngine {
         extractedTables.barang.length +
         extractedTables.kategori.length +
         extractedTables.satuan.length +
+        extractedTables.departemen.length +
         extractedTables.supplier.length +
         extractedTables.transaksi_keluar.length;
 
@@ -1213,6 +1307,7 @@ class MySQLEngine {
         if (extractedTables.users.length > 0) this.state.users = extractedTables.users;
         if (extractedTables.kategori.length > 0) this.state.kategori = extractedTables.kategori;
         if (extractedTables.satuan.length > 0) this.state.satuan = extractedTables.satuan;
+        if (extractedTables.departemen.length > 0) this.state.departemen = extractedTables.departemen;
         if (extractedTables.supplier.length > 0) this.state.supplier = extractedTables.supplier;
         if (extractedTables.barang.length > 0) this.state.barang = extractedTables.barang;
         if (extractedTables.transaksi_masuk.length > 0) this.state.transaksi_masuk = extractedTables.transaksi_masuk;

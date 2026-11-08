@@ -13,6 +13,7 @@ import {
   Camera,
   Trash2,
   Eye,
+  AlertCircle,
   Image as ImageIcon
 } from 'lucide-react';
 import { TransaksiMasuk } from '../../types';
@@ -36,6 +37,7 @@ export const TransaksiMasukView: React.FC = () => {
   const [jumlah, setJumlah] = useState<number>(5);
   const [catatan, setCatatan] = useState('');
   const [fotoNota, setFotoNota] = useState<string>('');
+  const [validationError, setValidationError] = useState('');
 
   const handleOpenAdd = () => {
     const nextSeq = transaksiMasuk.length + 1;
@@ -49,6 +51,7 @@ export const TransaksiMasukView: React.FC = () => {
     setJumlah(5);
     setCatatan('Restok pengadaan barang inventaris rutin');
     setFotoNota('');
+    setValidationError('');
     setShowAddModal(true);
   };
 
@@ -61,7 +64,7 @@ export const TransaksiMasukView: React.FC = () => {
     if (!file) return;
 
     if (file.size > 2 * 1024 * 1024) {
-      alert('Ukuran foto terlalu besar! Maksimal 2 MB.');
+      setValidationError('Ukuran foto terlalu besar! Maksimal 2 MB.');
       return;
     }
 
@@ -69,14 +72,16 @@ export const TransaksiMasukView: React.FC = () => {
     reader.onload = (event) => {
       const dataUrl = event.target?.result as string;
       setFotoNota(dataUrl);
+      setValidationError('');
     };
     reader.readAsDataURL(file);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setValidationError('');
     if (jumlah <= 0) {
-      alert('Jumlah barang masuk minimal 1!');
+      setValidationError('Jumlah barang masuk minimal 1 unit!');
       return;
     }
 
@@ -262,6 +267,13 @@ export const TransaksiMasukView: React.FC = () => {
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {validationError && (
+              <div className="mx-6 mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                <span>{validationError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs overflow-y-auto scrollbar-thin flex-1">
               <div className="grid grid-cols-2 gap-4">
