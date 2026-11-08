@@ -885,16 +885,37 @@ class MySQLEngine {
       this.state.lastUpdated = new Date().toISOString();
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
       if (db) {
-        // Prepare lightweight payload for Firestore to prevent 1MB document limit issues
-        const cleanPayload = JSON.parse(JSON.stringify(this.state));
+        // Deep copy replacing undefined with null
+        const cleanPayload = JSON.parse(
+          JSON.stringify(this.state, (_key, value) => (value === undefined ? null : value))
+        );
+
         if (cleanPayload.barang && Array.isArray(cleanPayload.barang)) {
-          cleanPayload.barang = cleanPayload.barang.map((b: any) => ({
-            ...b,
-            // Truncate ultra-large images to avoid Firestore 1MB doc size limit
-            foto: b.foto && b.foto.length > 300000 ? b.foto.substring(0, 300000) : b.foto,
-          }));
+          cleanPayload.barang = cleanPayload.barang.map((b: any) => {
+            const item = { ...b };
+            if (item.foto && typeof item.foto === 'string' && item.foto.length > 300000) {
+              item.foto = item.foto.substring(0, 300000);
+            }
+            return item;
+          });
         }
-        setDoc(doc(db, 'ci_inventaris_db', 'master_state'), cleanPayload).catch((err) => {
+
+        const sanitizeForFirestore = (obj: any): any => {
+          if (obj === null || typeof obj !== 'object') return obj;
+          if (Array.isArray(obj)) return obj.map((item) => (item === undefined ? null : sanitizeForFirestore(item)));
+          const cleaned: Record<string, any> = {};
+          for (const k of Object.keys(obj)) {
+            const v = obj[k];
+            if (v !== undefined) {
+              cleaned[k] = sanitizeForFirestore(v);
+            }
+          }
+          return cleaned;
+        };
+
+        const sanitizedPayload = sanitizeForFirestore(cleanPayload);
+
+        setDoc(doc(db, 'ci_inventaris_db', 'master_state'), sanitizedPayload).catch((err) => {
           console.error('Error saving state to Firestore:', err);
         });
       }
