@@ -5,7 +5,8 @@
   "portsAttributes": {
     "3000": {
       "label": "CI-Inventaris Preview",
-      "onAutoForward": "openBrowser"
+      "onAutoForward": "openBrowser",
+      "visibility": "public"
     }
   },
   "postCreateCommand": "npm install",
