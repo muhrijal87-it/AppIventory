@@ -212,7 +212,7 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
       no_transaksi: transferNoTransaksi,
       tanggal: transferTanggal,
       penerima: transferPenerimaBaru.trim(),
-      departemen: '-',
+      departemen: transferModalItem.departemen || 'Operasional',
       barang_id: transferModalItem.barang_id,
       jumlah: transferJumlah > 0 ? transferJumlah : 1,
       model: transferModel.trim() || undefined,
@@ -223,9 +223,13 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
       created_at: new Date().toISOString(),
     };
 
-    addTransaksiKeluar(newTrx);
-    setTransferModalItem(null);
-    setSelectedDO(newTrx);
+    const res = addTransaksiKeluar(newTrx);
+    if (res.success) {
+      setTransferModalItem(null);
+      setSelectedDO(newTrx);
+    } else {
+      setTransferError(res.message);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -384,8 +388,17 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
                           </div>
                         )}
                       </td>
-                      <td className="px-2.5 py-2.5 text-right font-mono font-bold text-orange-600 text-sm whitespace-nowrap">
-                        -{trx.jumlah}
+                      <td className="px-2.5 py-2.5 text-right font-mono font-bold text-sm whitespace-nowrap">
+                        {trx.no_transaksi.startsWith('TRF-') ? (
+                          <div className="flex flex-col items-end">
+                            <span className="text-purple-600 dark:text-purple-400 font-bold">{trx.jumlah} unit</span>
+                            <span className="text-[10px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800">
+                              Pindah · Stok Tetap
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-orange-600 dark:text-orange-400 font-bold">-{trx.jumlah}</span>
+                        )}
                       </td>
                       <td className="px-2.5 py-2.5 text-center whitespace-nowrap">
                         {trx.foto_bukti ? (
@@ -853,6 +866,13 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
                   </div>
                 );
               })()}
+
+              <div className="p-3 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-lg text-xs text-purple-700 dark:text-purple-300 flex items-start gap-2 font-medium">
+                <ArrowRightLeft className="w-4 h-4 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-semibold">Info Perpindahan:</span> Perpindahan barang tidak mengurangi sisa stok di gudang. Jumlah sisa stok tetap dipertahankan.
+                </div>
+              </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>

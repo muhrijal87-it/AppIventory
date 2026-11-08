@@ -219,7 +219,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return true;
   };
 
-  // OUTBOUND TRANSACTIONS
+  // OUTBOUND TRANSACTIONS & PERPINDAHAN BARANG
   const addTransaksiKeluar = (trxData: Omit<TransaksiKeluar, 'id' | 'created_at'>): { success: boolean; message: string } => {
     const t0 = performance.now();
     const state = mysql.getState();
@@ -230,7 +230,12 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return { success: false, message: 'Barang tidak ditemukan dalam database!' };
     }
 
-    if (targetItem.stok < trxData.jumlah) {
+    const isTransfer = trxData.no_transaksi.startsWith('TRF-');
+
+    // Validasi kecukupan stok hanya dilakukan untuk barang keluar fisik baru (OUT-...).
+    // Untuk perpindahan barang (TRF-...), unit berasal dari pemindahan barang yang sudah beredar/didistribusikan
+    // sehingga tidak mengambil dari sisa stok gudang dan tidak boleh diblokir oleh sisa stok.
+    if (!isTransfer && targetItem.stok < trxData.jumlah) {
       return {
         success: false,
         message: `Stok tidak mencukupi! Stok ${targetItem.nama_barang} saat ini: ${targetItem.stok}, permintaan: ${trxData.jumlah}.`,
@@ -245,12 +250,19 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
 
     const stokSebelum = targetItem.stok;
-    const stokSesudah = targetItem.stok - trxData.jumlah;
-    targetItem.stok = stokSesudah;
+    // ATURAN PENTING: Untuk status perpindahan barang, JANGAN kurangi sisa stok.
+    // Sisa stok gudang tetap dipertahankan. Stok hanya berkurang bila ada barang keluar (OUT-...).
+    const stokSesudah = isTransfer ? targetItem.stok : targetItem.stok - trxData.jumlah;
+    if (!isTransfer) {
+      targetItem.stok = stokSesudah;
+    }
     targetItem.updated_at = now;
 
     const asalLokasi = targetItem.lokasi_rak || 'Gudang Utama';
-    const tujuanLokasi = `${trxData.departemen} (${trxData.penerima})`;
+    const tujuanLokasi =
+      trxData.departemen && trxData.departemen !== '-'
+        ? `${trxData.departemen} (${trxData.penerima})`
+        : trxData.penerima;
 
     // Record mutation
     const mutasiId = state.mutasi_stok.length > 0 ? Math.max(...state.mutasi_stok.map((m) => m.id)) + 1 : 1;
@@ -258,12 +270,14 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       id: mutasiId,
       tanggal: now,
       barang_id: targetItem.id,
-      jenis: 'Keluar',
+      jenis: isTransfer ? 'Transfer' : 'Keluar',
       jumlah: trxData.jumlah,
       stok_sebelum: stokSebelum,
       stok_sesudah: stokSesudah,
       referensi: trxData.no_transaksi,
-      keterangan: `Pengeluaran barang (${trxData.departemen} - ${trxData.penerima})`,
+      keterangan: isTransfer
+        ? `Perpindahan barang ke ${trxData.penerima} (Sisa stok gudang tetap ${targetItem.stok} unit)`
+        : `Pengeluaran barang (${trxData.departemen && trxData.departemen !== '-' ? trxData.departemen + ' - ' : ''}${trxData.penerima})`,
       petugas_id: trxData.petugas_id,
       asal: asalLokasi,
       tujuan: tujuanLokasi,
@@ -273,9 +287,37 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     mysql.setState(state);
     reloadState();
 
-    mysql.logQuery(`START TRANSACTION; INSERT INTO tbl_transaksi_keluar VALUES (...); UPDATE tbl_barang SET stok = stok - ${trxData.jumlah} WHERE id = ${targetItem.id}; COMMIT;`, performance.now() - t0, 2);
-    logActivity('INSERT_TRX_KELUAR', 'TRANSAKSI', `Input transaksi keluar ${newTrx.no_transaksi} (-${trxData.jumlah} ${targetItem.nama_barang})`);
-    setFlash('success', `Pengeluaran barang ${newTrx.no_transaksi} berhasil dicatat. Sisa stok ${targetItem.nama_barang}: ${stokSesudah}.`);
+    if (isTransfer) {
+      mysql.logQuery(
+        `START TRANSACTION; INSERT INTO tbl_transaksi_keluar VALUES (...); -- Perpindahan barang (stok gudang tetap: ${targetItem.stok}); COMMIT;`,
+        performance.now() - t0,
+        1
+      );
+      logActivity(
+        'TRANSFER_BARANG',
+        'TRANSAKSI',
+        `Perpindahan barang ${newTrx.no_transaksi} (${trxData.jumlah} unit ${targetItem.nama_barang} ke ${trxData.penerima}, sisa stok gudang tetap: ${targetItem.stok})`
+      );
+      setFlash(
+        'success',
+        `Perpindahan barang ${newTrx.no_transaksi} berhasil dicatat. Sisa stok ${targetItem.nama_barang} di gudang tetap ${targetItem.stok} unit (tidak berkurang).`
+      );
+    } else {
+      mysql.logQuery(
+        `START TRANSACTION; INSERT INTO tbl_transaksi_keluar VALUES (...); UPDATE tbl_barang SET stok = stok - ${trxData.jumlah} WHERE id = ${targetItem.id}; COMMIT;`,
+        performance.now() - t0,
+        2
+      );
+      logActivity(
+        'INSERT_TRX_KELUAR',
+        'TRANSAKSI',
+        `Input transaksi keluar ${newTrx.no_transaksi} (-${trxData.jumlah} ${targetItem.nama_barang})`
+      );
+      setFlash(
+        'success',
+        `Pengeluaran barang ${newTrx.no_transaksi} berhasil dicatat. Sisa stok ${targetItem.nama_barang}: ${stokSesudah}.`
+      );
+    }
     return { success: true, message: 'Transaksi berhasil disimpan!' };
   };
 
@@ -601,7 +643,9 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const barangKritis = dbState.barang.filter((b) => b.stok > 0 && b.stok <= b.stok_min);
   const barangHabis = dbState.barang.filter((b) => b.stok === 0);
   const totalMasukBulanIni = dbState.transaksi_masuk.reduce((acc, t) => acc + t.jumlah, 0);
-  const totalKeluarBulanIni = dbState.transaksi_keluar.reduce((acc, t) => acc + t.jumlah, 0);
+  const totalKeluarBulanIni = dbState.transaksi_keluar
+    .filter((t) => !t.no_transaksi.startsWith('TRF-'))
+    .reduce((acc, t) => acc + t.jumlah, 0);
 
   return (
     <InventoryContext.Provider

@@ -162,19 +162,12 @@ export const PerpindahanBarangView: React.FC<PerpindahanBarangViewProps> = ({ on
       return;
     }
 
-    if (targetItem.stok < jumlah) {
-      setValidationError(
-        `Stok fisik ${targetItem.nama_barang} tidak mencukupi! Tersedia hanya: ${targetItem.stok}`
-      );
-      return;
-    }
-
     if (!penerima.trim()) {
       setValidationError('Nama penerima / PIC penanggung jawab wajib diisi!');
       return;
     }
 
-    addTransaksiKeluar({
+    const res = addTransaksiKeluar({
       no_transaksi: noTransaksi,
       tanggal,
       penerima,
@@ -188,7 +181,11 @@ export const PerpindahanBarangView: React.FC<PerpindahanBarangViewProps> = ({ on
       foto_bukti: fotoBukti || undefined,
     });
 
-    setShowAddModal(false);
+    if (res.success) {
+      setShowAddModal(false);
+    } else {
+      setValidationError(res.message);
+    }
   };
 
   // Filtered transactions (derived directly from Barang Keluar / transaksiKeluar)
@@ -384,8 +381,13 @@ export const PerpindahanBarangView: React.FC<PerpindahanBarangViewProps> = ({ on
                         </div>
                         <div className="text-[10px] text-slate-400">Penanggung Jawab</div>
                       </td>
-                      <td className="px-4 py-3 text-right font-mono font-bold text-purple-600 dark:text-purple-400 text-sm whitespace-nowrap">
-                        -{trx.jumlah}
+                      <td className="px-4 py-3 text-right font-mono font-bold text-sm whitespace-nowrap">
+                        <div className="flex flex-col items-end">
+                          <span className="text-purple-600 dark:text-purple-400 font-bold">{trx.jumlah} unit</span>
+                          <span className="text-[10px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800">
+                            Pindah · Stok Tetap
+                          </span>
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-center whitespace-nowrap">
                         {trx.foto_bukti ? (
@@ -495,10 +497,14 @@ export const PerpindahanBarangView: React.FC<PerpindahanBarangViewProps> = ({ on
                 >
                   {barang.map((b) => (
                     <option key={b.id} value={b.id}>
-                      {b.kode_barang} - {b.nama_barang} (Stok Tersedia: {b.stok})
+                      {b.kode_barang} - {b.nama_barang} (Sisa Stok Gudang: {b.stok})
                     </option>
                   ))}
                 </select>
+                <p className="text-[11px] text-purple-600 dark:text-purple-400 mt-1 flex items-center gap-1 font-medium">
+                  <ArrowRightLeft className="w-3.5 h-3.5 shrink-0" />
+                  <span>Perpindahan barang tidak mengurangi sisa stok gudang (jumlah sisa stok tetap dipertahankan).</span>
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
