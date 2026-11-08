@@ -583,6 +583,38 @@ export const BarangListView: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Jumlah Stok Fisik (Awal) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={formState.stok}
+                    onChange={(e) => setFormState({ ...formState, stok: Math.max(0, parseInt(e.target.value) || 0) })}
+                    placeholder="Contoh: 10"
+                    className="w-full px-3 py-2 font-mono font-bold bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Stok Minimal (Alert Peringatan) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={formState.stok_min}
+                    onChange={(e) => setFormState({ ...formState, stok_min: Math.max(0, parseInt(e.target.value) || 0) })}
+                    placeholder="Contoh: 5"
+                    className="w-full px-3 py-2 font-mono font-bold bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Lokasi Rak / Penyimpanan
                   </label>
                   <input
