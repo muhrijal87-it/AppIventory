@@ -523,7 +523,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ type = 'stok' }) => {
       )}
 
       {/* Printable Report Document Card */}
-      <div className="bg-white text-slate-900 border border-slate-200 rounded-xl p-8 shadow-xs">
+      <div className="bg-white text-slate-900 border border-slate-200 rounded-xl p-8 shadow-xs print:border-none print:shadow-none print:p-0 print:m-0 print:rounded-none print:w-full">
         {/* Printable Official Header */}
         <div className="border-b-2 border-slate-900 pb-4 mb-6">
           <div className="flex justify-between items-start">
@@ -536,7 +536,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ type = 'stok' }) => {
                   : 'LAPORAN REKAPITULASI TRANSAKSI MASUK & KELUAR'}
               </h1>
               <p className="text-xs text-slate-600 font-medium">
-                Sistem Informasi Inventaris CodeIgniter 4 &amp; Relational MySQL
+                Sistem Informasi Inventaris &amp; Logistik Gudang
               </p>
               <p className="text-[11px] text-slate-500 mt-0.5">
                 Kawasan Industri Pulogadung Blok B No. 12, Jakarta Timur · Telp: (021) 8899-7766

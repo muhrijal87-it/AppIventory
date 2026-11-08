@@ -80,6 +80,43 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
           'Manajemen Direksi',
         ];
 
+  // Map of serial numbers already issued in prior OUT- transactions
+  const issuedSerialsMap = React.useMemo(() => {
+    const map: Record<string, { no_transaksi: string; penerima: string; tanggal: string }> = {};
+    transaksiKeluar.forEach((t) => {
+      if (t.serial_number && !t.no_transaksi.startsWith('TRF-')) {
+        const sns = t.serial_number.split(/[,;\n]+/).map((s) => s.trim().toUpperCase()).filter(Boolean);
+        sns.forEach((sn) => {
+          map[sn] = {
+            no_transaksi: t.no_transaksi,
+            penerima: t.penerima,
+            tanggal: t.tanggal,
+          };
+        });
+      }
+    });
+    return map;
+  }, [transaksiKeluar]);
+
+  // Parsed current serial numbers in form input
+  const parsedCurrentSNs = React.useMemo(() => {
+    return serialNumber
+      .split(/[,;\n]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }, [serialNumber]);
+
+  // Check if user entered duplicate SNs in same input
+  const internalDuplicateSN = React.useMemo(() => {
+    const upperList = parsedCurrentSNs.map((s) => s.toUpperCase());
+    return parsedCurrentSNs.find((sn, idx) => upperList.indexOf(sn.toUpperCase()) !== idx);
+  }, [parsedCurrentSNs]);
+
+  // Check if any SN in input has already been issued
+  const alreadyIssuedSN = React.useMemo(() => {
+    return parsedCurrentSNs.find((sn) => issuedSerialsMap[sn.toUpperCase()]);
+  }, [parsedCurrentSNs, issuedSerialsMap]);
+
   const handleOpenAdd = () => {
     const nextSeq = transaksiKeluar.length + 1;
     const today = new Date();
@@ -95,10 +132,11 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
     setJumlah(1);
     setModel(initialItem?.model || '');
 
-    // Auto-fetch serial number from item data
+    // Auto-fetch first AVAILABLE (non-issued) serial number from item data
     if (initialItem?.serial_number) {
       const sns = initialItem.serial_number.split(/[,;\n]+/).map((s) => s.trim()).filter(Boolean);
-      setSerialNumber(sns[0] || initialItem.serial_number);
+      const avail = sns.find((sn) => !issuedSerialsMap[sn.toUpperCase()]);
+      setSerialNumber(avail || '');
     } else {
       setSerialNumber('');
     }
@@ -118,7 +156,8 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
       }
       if (targetItem.serial_number) {
         const sns = targetItem.serial_number.split(/[,;\n]+/).map((s) => s.trim()).filter(Boolean);
-        setSerialNumber(sns[0] || targetItem.serial_number);
+        const avail = sns.find((sn) => !issuedSerialsMap[sn.toUpperCase()]);
+        setSerialNumber(avail || '');
       } else {
         setSerialNumber('');
       }
@@ -129,11 +168,25 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
     const targetItem = barang.find((b) => b.id === Number(barangId));
     if (targetItem) {
       if (targetItem.model) setModel(targetItem.model);
-      if (targetItem.serial_number) {
-        const sns = targetItem.serial_number.split(/[,;\n]+/).map((s) => s.trim()).filter(Boolean);
-        setSerialNumber(sns[0] || targetItem.serial_number);
+      
+      const allItemSNs = targetItem.serial_number
+        ? targetItem.serial_number.split(/[,;\n]+/).map((s) => s.trim()).filter(Boolean)
+        : [];
+
+      // Find first registered SN that has NOT been issued yet and is NOT already typed
+      const availableSN = allItemSNs.find(
+        (sn) => !issuedSerialsMap[sn.toUpperCase()] && !parsedCurrentSNs.map((s) => s.toUpperCase()).includes(sn.toUpperCase())
+      );
+
+      if (availableSN) {
+        setSerialNumber((prev) => (prev ? `${prev}, ${availableSN}` : availableSN));
+        setValidationError('');
+      } else if (allItemSNs.length > 0) {
+        setValidationError(`Semua Serial Number terdaftar (${allItemSNs.length} unit) untuk barang ini sudah dikeluarkan atau ada di formulir.`);
       } else {
-        setSerialNumber(`SN-${targetItem.kode_barang}-${Math.floor(1000 + Math.random() * 9000)}`);
+        const newSN = `SN-${targetItem.kode_barang}-${Math.floor(10000 + Math.random() * 90000)}`;
+        setSerialNumber((prev) => (prev ? `${prev}, ${newSN}` : newSN));
+        setValidationError('');
       }
     }
   };
@@ -254,11 +307,22 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
       return;
     }
 
+    if (internalDuplicateSN) {
+      setValidationError(`Serial Number "${internalDuplicateSN}" ditulis ganda/dobel pada formulir ini. Harap hapus duplikatnya.`);
+      return;
+    }
+
+    if (alreadyIssuedSN) {
+      const prev = issuedSerialsMap[alreadyIssuedSN.toUpperCase()];
+      setValidationError(`Serial Number "${alreadyIssuedSN}" TIDAK DAPAT DIGUNAKAN karena sudah pernah dikeluarkan pada transaksi ${prev.no_transaksi} (${prev.penerima} - ${prev.tanggal}).`);
+      return;
+    }
+
     const res = addTransaksiKeluar({
       no_transaksi: noTransaksi,
       tanggal,
       penerima,
-      departemen: '-',
+      departemen: departemen || 'Divisi Pengembangan TI',
       barang_id: Number(barangId),
       jumlah: Number(jumlah),
       model: model.trim() || undefined,
@@ -576,7 +640,11 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
                       value={serialNumber}
                       onChange={(e) => setSerialNumber(e.target.value)}
                       placeholder="Contoh: SN-8829104-X, SN-8829105-Y"
-                      className="w-full pl-3 pr-10 py-2 font-mono bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
+                      className={`w-full pl-3 pr-10 py-2 font-mono bg-slate-50 dark:bg-slate-800 border rounded-lg text-slate-900 dark:text-white ${
+                        internalDuplicateSN || alreadyIssuedSN
+                          ? 'border-red-500 dark:border-red-500 ring-1 ring-red-500'
+                          : 'border-slate-300 dark:border-slate-700'
+                      }`}
                     />
                     <button
                       type="button"
@@ -587,10 +655,99 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
                       <Camera className="w-4 h-4" />
                     </button>
                   </div>
+
+                  {/* Real-time Inline Warnings for Serial Numbers */}
+                  {internalDuplicateSN && (
+                    <div className="mt-1.5 p-2 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-[11px] text-red-700 dark:text-red-300 flex items-center gap-1.5 font-medium">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-600" />
+                      <span>Input Dobel: Serial Number "{internalDuplicateSN}" ditulis ganda pada formulir ini!</span>
+                    </div>
+                  )}
+
+                  {alreadyIssuedSN && !internalDuplicateSN && (
+                    <div className="mt-1.5 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-[11px] text-amber-800 dark:text-amber-200 flex items-start gap-1.5 font-medium">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-600 mt-0.5" />
+                      <div>
+                        <span className="font-bold">Sudah Pernah Dikeluarkan:</span> Serial Number "{alreadyIssuedSN}" tercatat pada transaksi{' '}
+                        <strong className="font-mono">{issuedSerialsMap[alreadyIssuedSN.toUpperCase()].no_transaksi}</strong> (
+                        {issuedSerialsMap[alreadyIssuedSN.toUpperCase()].penerima} - {issuedSerialsMap[alreadyIssuedSN.toUpperCase()].tanggal}).
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Registered Item Serial Numbers Chips */}
+                  {(() => {
+                    const targetItem = barang.find((b) => b.id === Number(barangId));
+                    const allItemSNs = targetItem?.serial_number
+                      ? targetItem.serial_number.split(/[,;\n]+/).map((s) => s.trim()).filter(Boolean)
+                      : [];
+
+                    if (allItemSNs.length === 0) return null;
+
+                    return (
+                      <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 block mb-1">
+                          Pilih Serial Number Terdaftar ({allItemSNs.length} Unit):
+                        </span>
+                        <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto scrollbar-thin">
+                          {allItemSNs.map((sn) => {
+                            const isIssued = !!issuedSerialsMap[sn.toUpperCase()];
+                            const isSelected = parsedCurrentSNs.map((s) => s.toUpperCase()).includes(sn.toUpperCase());
+
+                            if (isIssued) {
+                              const prev = issuedSerialsMap[sn.toUpperCase()];
+                              return (
+                                <span
+                                  key={sn}
+                                  className="text-[10px] font-mono px-2 py-0.5 rounded bg-red-50 dark:bg-red-950/30 text-red-500 line-through border border-red-200 dark:border-red-900/60 cursor-not-allowed opacity-75"
+                                  title={`Sudah Dikeluarkan (${prev.no_transaksi} ke ${prev.penerima})`}
+                                >
+                                  {sn} (Dikeluarkan)
+                                </span>
+                              );
+                            }
+
+                            return (
+                              <button
+                                key={sn}
+                                type="button"
+                                onClick={() => {
+                                  if (isSelected) {
+                                    const next = parsedCurrentSNs.filter((s) => s.toUpperCase() !== sn.toUpperCase());
+                                    setSerialNumber(next.join(', '));
+                                  } else {
+                                    setSerialNumber((prev) => (prev ? `${prev}, ${sn}` : sn));
+                                  }
+                                  setValidationError('');
+                                }}
+                                className={`text-[10px] font-mono px-2 py-0.5 rounded transition-all flex items-center gap-1 cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-orange-600 text-white font-bold shadow-2xs'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-orange-50 dark:hover:bg-orange-950/50 hover:text-orange-600 border border-slate-200 dark:border-slate-700'
+                                }`}
+                              >
+                                <span>{sn}</span>
+                                {isSelected && <CheckCircle2 className="w-3 h-3 text-white" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   <BarcodeScannerModal
                     isOpen={showQRScanner}
                     onClose={() => setShowQRScanner(false)}
-                    onScan={(scannedVal) => setSerialNumber(scannedVal)}
+                    onScan={(scannedVal) => {
+                      if (issuedSerialsMap[scannedVal.toUpperCase()]) {
+                        const prev = issuedSerialsMap[scannedVal.toUpperCase()];
+                        setValidationError(`Barcode ${scannedVal} SUDAH PERNAH DIKELUARKAN pada transaksi ${prev.no_transaksi}!`);
+                      } else {
+                        setSerialNumber((prev) => (prev ? `${prev}, ${scannedVal}` : scannedVal));
+                        setValidationError('');
+                      }
+                    }}
                     title="Scan Barcode / QR Serial Number"
                     registeredSerials={
                       barang

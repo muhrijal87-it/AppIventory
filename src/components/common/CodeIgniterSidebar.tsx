@@ -64,7 +64,7 @@ export const CodeIgniterSidebar: React.FC<SidebarProps> = ({
 
       {/* Sidebar container */}
       <aside
-        className={`fixed lg:sticky top-0 lg:top-15 left-0 z-40 h-full lg:h-[calc(100vh-3.75rem)] w-64 bg-slate-900 text-slate-300 border-r border-slate-800 flex flex-col shrink-0 transition-transform duration-200 ease-in-out ${
+        className={`fixed lg:sticky top-0 lg:top-15 left-0 z-40 h-full lg:h-[calc(100vh-3.75rem)] w-64 bg-slate-900 text-slate-300 border-r border-slate-800 flex flex-col shrink-0 transition-transform duration-200 ease-in-out print:hidden ${
           isOpenMobile ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >

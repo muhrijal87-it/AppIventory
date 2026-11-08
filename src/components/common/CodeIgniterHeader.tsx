@@ -81,7 +81,7 @@ export const CodeIgniterHeader: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-xs">
+    <header className="sticky top-0 z-30 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-xs print:hidden">
       {/* Top Main Navbar */}
       <div className="flex items-center justify-between px-4 sm:px-6 h-15 gap-4">
         {/* Left: Brand & Breadcrumb */}

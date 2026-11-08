@@ -371,6 +371,8 @@ export const BarangListView: React.FC = () => {
                 <th className="px-4 py-3">Kode / SKU</th>
                 <th className="px-4 py-3">Barang &amp; Foto</th>
                 <th className="px-4 py-3">Kategori</th>
+                <th className="px-4 py-3 text-center">Stok Fisik</th>
+                <th className="px-4 py-3 text-center">Stok Min</th>
                 <th className="px-4 py-3">Lokasi Rak</th>
                 <th className="px-4 py-3 text-center">Kondisi</th>
                 <th className="px-4 py-3 text-center">Aksi</th>
@@ -379,7 +381,7 @@ export const BarangListView: React.FC = () => {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
                     <div className="flex flex-col items-center justify-center space-y-3">
                       <Package className="w-10 h-10 text-slate-300 dark:text-slate-700" />
                       <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
@@ -412,6 +414,9 @@ export const BarangListView: React.FC = () => {
               ) : (
                 filteredItems.map((item) => {
                   const kat = kategori.find((k) => k.id === item.kategori_id);
+                  const sat = satuan.find((s) => s.id === item.satuan_id);
+                  const isKritis = item.stok > 0 && item.stok <= item.stok_min;
+                  const isHabis = item.stok === 0;
 
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-850 transition-colors">
@@ -452,6 +457,23 @@ export const BarangListView: React.FC = () => {
                       </td>
                       <td className="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">
                         {kat?.nama_kategori || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-mono font-bold shadow-2xs ${
+                            isHabis
+                              ? 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900'
+                              : isKritis
+                              ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-900'
+                              : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                          }`}
+                        >
+                          <span>{item.stok}</span>
+                          <span className="text-[10px] font-sans font-normal opacity-80">{sat?.nama_satuan || 'Unit'}</span>
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center font-mono font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                        {item.stok_min}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-slate-600 dark:text-slate-300">
                         <div className="flex items-center gap-1.5 text-xs">
