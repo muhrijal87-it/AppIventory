@@ -68,6 +68,37 @@ Jika Anda ingin menjalankan di komputer lokal / laptop Anda:
 
 ---
 
+### ⚠️ Solusi Error Windows PowerShell (`npm.ps1 cannot be loaded`)
+
+Jika saat mengetik `npm install` di PowerShell muncul pesan merah:
+> *npm : File C:\Program Files\nodejs\npm.ps1 cannot be loaded because running scripts is disabled on this system.*
+
+Gunakan salah satu dari cara berikut:
+
+- **Cara A (Rekomendasi - Beri izin script PowerShell):**
+  Jalankan perintah ini di PowerShell:
+  ```powershell
+  Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+  ```
+  Lalu tekan `Y` (Yes) dan tekan Enter. Setelah itu coba ketik `npm install` lagi.
+
+- **Cara B (Gunakan `npm.cmd` langsung tanpa ubah setting):**
+  Ketik `npm.cmd` sebagai ganti `npm`:
+  ```powershell
+  npm.cmd install
+  npm.cmd run dev
+  ```
+
+- **Cara C (Klik 2x File Bawaan Proyek):**
+  Cukup klik ganda (double-click) file:
+  - `install.bat` untuk menginstall paket.
+  - `run.bat` untuk menjalankan aplikasi di browser.
+
+- **Cara D (Gunakan Terminal Command Prompt / CMD):**
+  Di VS Code, klik panah dropdown di samping tombol `+` pada panel terminal, lalu pilih **Command Prompt** (bukan PowerShell). Lalu jalankan `npm install`.
+
+---
+
 ## 🔑 Akun Login Bawaan (Default Credentials)
 
 Aplikasi memiliki autentikasi berbasis role (RBAC) dengan hak akses berbeda:
