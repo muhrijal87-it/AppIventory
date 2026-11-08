@@ -516,7 +516,7 @@ export const PerpindahanBarangView: React.FC<PerpindahanBarangViewProps> = ({ on
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block font-medium text-slate-700 dark:text-slate-300">
-                      Serial Number (Nomor Seri)
+                      Serial Number
                     </label>
                     <button
                       type="button"
@@ -535,30 +535,6 @@ export const PerpindahanBarangView: React.FC<PerpindahanBarangViewProps> = ({ on
                     placeholder="Contoh: SN-8829104-X, SN-8829105-Y"
                     className="w-full px-3 py-2 font-mono bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
                   />
-                  {barang.find((b) => b.id === Number(barangId))?.serial_number && (
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1">
-                      <span className="text-[10px] text-slate-400">Pilih SN Terdaftar:</span>
-                      {barang
-                        .find((b) => b.id === Number(barangId))!
-                        .serial_number!.split(/[,;\n]+/)
-                        .map((s) => s.trim())
-                        .filter(Boolean)
-                        .map((sn) => (
-                          <button
-                            key={sn}
-                            type="button"
-                            onClick={() => setSerialNumber(sn)}
-                            className={`text-[10px] font-mono px-1.5 py-0.5 rounded border transition-colors ${
-                              serialNumber === sn
-                                ? 'bg-purple-600 text-white border-purple-600'
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-purple-400'
-                            }`}
-                          >
-                            {sn}
-                          </button>
-                        ))}
-                    </div>
-                  )}
                 </div>
               </div>
 

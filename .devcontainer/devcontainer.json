@@ -1,0 +1,22 @@
+{
+  "name": "CI-Inventaris Application",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "CI-Inventaris Preview",
+      "onAutoForward": "openBrowser"
+    }
+  },
+  "postCreateCommand": "npm install",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "editor.formatOnSave": true
+      },
+      "extensions": [
+        "bradlc.vscode-tailwindcss"
+      ]
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { QrReader } from 'react-qr-reader';
 import {
   ArrowUpFromLine,
   Plus,
@@ -63,6 +64,7 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
   const [transferSN, setTransferSN] = useState('');
   const [transferKeperluan, setTransferKeperluan] = useState('');
   const [transferFotoBukti, setTransferFotoBukti] = useState<string>('');
+  const [showQRScanner, setShowQRScanner] = useState(false);
   const [transferError, setTransferError] = useState('');
 
   const departemenList =
@@ -546,7 +548,7 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block font-medium text-slate-700 dark:text-slate-300">
-                      Serial Number (Nomor Seri)
+                      Serial Number
                     </label>
                     <button
                       type="button"
@@ -558,35 +560,46 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
                       <span>Ambil Serial Number</span>
                     </button>
                   </div>
-                  <input
-                    type="text"
-                    value={serialNumber}
-                    onChange={(e) => setSerialNumber(e.target.value)}
-                    placeholder="Contoh: SN-8829104-X, SN-8829105-Y"
-                    className="w-full px-3 py-2 font-mono bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                  />
-                  {barang.find((b) => b.id === Number(barangId))?.serial_number && (
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1">
-                      <span className="text-[10px] text-slate-400">Pilih SN Terdaftar:</span>
-                      {barang
-                        .find((b) => b.id === Number(barangId))!
-                        .serial_number!.split(/[,;\n]+/)
-                        .map((s) => s.trim())
-                        .filter(Boolean)
-                        .map((sn) => (
-                          <button
-                            key={sn}
-                            type="button"
-                            onClick={() => setSerialNumber(sn)}
-                            className={`text-[10px] font-mono px-1.5 py-0.5 rounded border transition-colors ${
-                              serialNumber === sn
-                                ? 'bg-orange-600 text-white border-orange-600'
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-orange-400'
-                            }`}
-                          >
-                            {sn}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={serialNumber}
+                      onChange={(e) => setSerialNumber(e.target.value)}
+                      placeholder="Contoh: SN-8829104-X, SN-8829105-Y"
+                      className="w-full pl-3 pr-10 py-2 font-mono bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowQRScanner(true)}
+                      className="absolute right-2 top-2 p-1 rounded-md text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                      title="Scan Barcode/QR"
+                    >
+                      <Camera className="w-4 h-4" />
+                    </button>
+                  </div>
+                  {showQRScanner && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+                      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl w-full max-w-sm shadow-2xl">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-bold text-sm">Scan Serial Number</h4>
+                          <button onClick={() => setShowQRScanner(false)} className="text-slate-400 hover:text-slate-600">
+                            <X className="w-5 h-5" />
                           </button>
-                        ))}
+                        </div>
+                        <div className="overflow-hidden rounded-xl h-64 w-full">
+                          {/* @ts-ignore */}
+                          <QrReader
+                            constraints={{ facingMode: 'environment' }}
+                            scanDelay={500}
+                            onResult={(result, error) => {
+                              if (result) {
+                                setSerialNumber(result.getText());
+                                setShowQRScanner(false);
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
