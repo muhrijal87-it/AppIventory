@@ -507,7 +507,7 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
             </button>
           </div>
         </div>
-        <div className="max-h-[600px] overflow-y-auto overflow-x-auto scrollbar-thin">
+        <div className="overflow-x-auto">
           <table className="w-full text-left text-xs min-w-full">
             <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 text-slate-500 font-bold uppercase tracking-widest text-[10px] border-b border-slate-200 dark:border-slate-800 shadow-xs">
               <tr>
