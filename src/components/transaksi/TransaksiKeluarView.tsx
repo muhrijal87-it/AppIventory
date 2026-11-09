@@ -1204,9 +1204,12 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
             
             <div className="p-8 space-y-6 text-slate-800 dark:text-slate-200 overflow-y-auto print:p-0">
                <div className="flex justify-between items-start border-b pb-4">
-                  <div>
-                    <h1 className="text-xl font-black text-orange-600 tracking-tight">SURAT JALAN</h1>
-                    <p className="text-xs text-slate-500 font-mono">{selectedDO.no_transaksi}</p>
+                  <div className="flex items-center gap-3">
+                    <img src="/assets/aistudio/image_e544d608.png" alt="Logo" className="w-10 h-10 object-contain" />
+                    <div>
+                      <h1 className="text-xl font-black text-orange-600 tracking-tight">SURAT JALAN</h1>
+                      <p className="text-xs text-slate-500 font-mono">{selectedDO.no_transaksi}</p>
+                    </div>
                   </div>
                   <div className="text-right text-xs">
                     <p className="font-bold">Unit Logistik</p>

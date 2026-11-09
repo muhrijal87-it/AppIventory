@@ -29,10 +29,89 @@ import { Menu } from 'lucide-react';
 const MainLayout: React.FC = () => {
   const { isAuthenticated, can, user } = useAuth();
   const { appSettings } = useInventory();
+  
+  const [isLoading, setIsLoading] = React.useState(true);
   const [currentView, setCurrentView] = useState<string>('dashboard');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMVCModalOpen, setIsMVCModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
+  React.useEffect(() => {
+    // We want to show the loading screen for at least 1.2s for UX "boot" feel
+    const minLoadingTimer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1200);
+
+    const handleSync = () => {
+      // If synced early, we still wait for min timer for visual consistency
+      // but this event ensures we have the latest data before proceeding
+      console.log('Database synced from cloud during boot.');
+    };
+
+    window.addEventListener('db_synced_from_cloud', handleSync);
+    return () => {
+      clearTimeout(minLoadingTimer);
+      window.removeEventListener('db_synced_from_cloud', handleSync);
+    };
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900 overflow-hidden relative">
+        {/* Animated background elements for CI feel */}
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-600 via-red-500 to-red-600 animate-pulse"></div>
+        <div className="absolute -top-24 -left-24 w-96 h-96 bg-red-600/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl animate-pulse delay-700"></div>
+
+        <div className="relative flex flex-col items-center gap-8 text-center px-6">
+          <div className="relative">
+            <div className="w-24 h-24 rounded-2xl bg-white shadow-2xl flex items-center justify-center p-3 transform rotate-3 animate-bounce shadow-red-500/20">
+              <img 
+                src="/assets/inventory_logo_v2.jpg" 
+                alt="CI Logo" 
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                   // Fallback if image fails
+                   e.currentTarget.src = "https://www.codeigniter.com/assets/images/ci-logo-big.png";
+                }}
+              />
+            </div>
+            <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center shadow-lg animate-pulse">
+               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h1 className="text-2xl font-bold text-white tracking-tight">
+              REMIX<span className="text-red-500">CI</span> INVENTARI
+            </h1>
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-48 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-full bg-red-600 rounded-full animate-[progress_1.5s_ease-in-out_infinite]" style={{ width: '40%' }}></div>
+              </div>
+              <p className="text-xs font-mono text-slate-400 uppercase tracking-[0.2em] animate-pulse">
+                Inisialisasi Database MySQL...
+              </p>
+            </div>
+          </div>
+          
+          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-4 text-[10px] text-slate-500 font-mono uppercase tracking-widest">
+            <span>CodeIgniter 4.5.3</span>
+            <span className="w-1 h-1 bg-slate-700 rounded-full"></span>
+            <span>PHP 8.2 Runtime</span>
+          </div>
+        </div>
+
+        <style>{`
+          @keyframes progress {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(250%); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
 
   if (!isAuthenticated) {
     return <LoginView />;

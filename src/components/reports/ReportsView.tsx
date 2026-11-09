@@ -527,19 +527,20 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ type = 'stok' }) => {
         {/* Printable Official Header */}
         <div className="border-b-2 border-slate-900 pb-4 mb-6">
           <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-lg font-bold uppercase tracking-wider text-slate-900">
+            <div className="flex items-center gap-4">
+              <img src="/assets/aistudio/image_e544d608.png" alt="Logo" className="w-12 h-12 object-contain" />
+              <div>
+                <h1 className="text-lg font-bold uppercase tracking-wider text-slate-900">
                 {activeReport === 'perpindahan'
                   ? 'LAPORAN RESMI PERPINDAHAN BARANG (ALUR DISTRIBUSI)'
                   : activeReport === 'stok'
                   ? 'LAPORAN POSISI STOK INVENTARIS GUDANG & LOGISTIK'
                   : 'LAPORAN REKAPITULASI TRANSAKSI MASUK & KELUAR'}
               </h1>
+              </div>
+            </div>
               <p className="text-xs text-slate-600 font-medium">
                 Sistem Informasi Inventaris &amp; Logistik Gudang
-              </p>
-              <p className="text-[11px] text-slate-500 mt-0.5">
-                Kawasan Industri Pulogadung Blok B No. 12, Jakarta Timur · Telp: (021) 8899-7766
               </p>
             </div>
             <div className="text-right text-xs">
@@ -899,6 +900,5 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ type = 'stok' }) => {
           </div>
         </div>
       </div>
-    </div>
   );
 };

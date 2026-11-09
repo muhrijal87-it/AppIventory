@@ -62,7 +62,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.removeItem(CURRENT_USER_SESSION_KEY);
       }
     }
-  }, []);
+
+    const handleSync = () => {
+      const newState = mysql.getState();
+      setUsers(newState.users);
+      if (user) {
+         const match = newState.users.find((u) => u.id === user.id && u.is_active);
+         if (!match) {
+            setUser(null);
+            localStorage.removeItem(CURRENT_USER_SESSION_KEY);
+         }
+      }
+    };
+
+    window.addEventListener('db_synced_from_cloud', handleSync);
+    return () => window.removeEventListener('db_synced_from_cloud', handleSync);
+  }, [user]);
 
   const logActivity = (action: string, module: string, detail: string) => {
     const state = mysql.getState();
