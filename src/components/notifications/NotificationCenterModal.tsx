@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useNotifications } from '../../context/NotificationContext';
 import { NotificationCategory, NotificationItem } from '../../types/notification';
+import { PillNotification } from '../common/PillNotification';
 
 interface NotificationCenterModalProps {
   onNavigate?: (view: string) => void;
@@ -282,13 +283,44 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                     <button
                       type="button"
                       onClick={() => handleGoToModule(activeItem.actionUrl)}
-                      className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors"
+                      className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors cursor-pointer"
                     >
                       <span>{activeItem.actionLabel || 'Buka'}</span>
                       <ArrowRight className="w-4 h-4" />
                     </button>
                   )}
                 </div>
+
+                {/* Quick Reply Form if direct message */}
+                {activeItem.category === 'messages' && (
+                  <form onSubmit={handleSendReply} className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                    {replySuccess && (
+                      <PillNotification
+                        type="success"
+                        title="Terkirim!"
+                        message="Balasan Anda berhasil dikirim ke pengirim pesan."
+                        onClose={() => setReplySuccess(false)}
+                        className="mb-3"
+                      />
+                    )}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        placeholder={`Ketik balasan untuk ${activeItem.senderName}...`}
+                        className="flex-1 px-4 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:border-indigo-500"
+                      />
+                      <button
+                        type="submit"
+                        className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>Kirim</span>
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-slate-400">

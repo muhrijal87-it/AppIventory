@@ -13,10 +13,13 @@ import {
   Eye,
   AlertCircle,
   Image as ImageIcon,
+  Barcode,
 } from 'lucide-react';
 import { TransaksiMasuk } from '../../types';
 import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
+import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
+import { PillNotification } from '../common/PillNotification';
 
 // --- Reusable Form Components ---
 const FormLabel: React.FC<{ children: React.ReactNode; required?: boolean }> = ({ children, required }) => (
@@ -48,6 +51,11 @@ export const TransaksiMasukView: React.FC = () => {
   const [selectedInvoice, setSelectedInvoice] = useState<TransaksiMasuk | null>(null);
   const [viewingImage, setViewingImage] = useState<{ title: string; url: string } | null>(null);
 
+  // Scanner state
+  const [showScanner, setShowScanner] = useState(false);
+  const [scannerMode, setScannerMode] = useState<'search' | 'select_barang'>('search');
+  const [scanFeedback, setScanFeedback] = useState<{ type: 'success' | 'info' | 'warning'; message: string } | null>(null);
+
   // Form State
   const [noFaktur, setNoFaktur] = useState('');
   const [tanggal, setTanggal] = useState(new Date().toISOString().slice(0, 10));
@@ -57,6 +65,58 @@ export const TransaksiMasukView: React.FC = () => {
   const [catatan, setCatatan] = useState('');
   const [fotoNota, setFotoNota] = useState<string>('');
   const [validationError, setValidationError] = useState('');
+
+  const handleScan = (scannedVal: string) => {
+    const cleanVal = scannedVal.trim();
+    if (!cleanVal) return;
+
+    if (scannerMode === 'select_barang') {
+      // Find matching item in inventory catalog
+      const matched = barang.find(
+        (b) =>
+          (b.barcode && b.barcode.toLowerCase() === cleanVal.toLowerCase()) ||
+          b.kode_barang.toLowerCase() === cleanVal.toLowerCase() ||
+          (b.serial_number && b.serial_number.toLowerCase().includes(cleanVal.toLowerCase())) ||
+          (b.model && b.model.toLowerCase() === cleanVal.toLowerCase())
+      );
+
+      if (matched) {
+        setBarangId(matched.id);
+        setValidationError('');
+        setScanFeedback({
+          type: 'success',
+          message: `Barang terpilih: "${matched.nama_barang}" (${matched.kode_barang}) [Barcode: ${cleanVal}]`,
+        });
+      } else {
+        setScanFeedback({
+          type: 'warning',
+          message: `Barcode "${cleanVal}" tidak cocok dengan barang di katalog. Anda dapat memilih barang secara manual.`,
+        });
+      }
+      setTimeout(() => setScanFeedback(null), 5000);
+    } else if (scannerMode === 'search') {
+      // Search list or auto-detect item to create transaction
+      const matched = barang.find(
+        (b) =>
+          (b.barcode && b.barcode.toLowerCase() === cleanVal.toLowerCase()) ||
+          b.kode_barang.toLowerCase() === cleanVal.toLowerCase()
+      );
+
+      setSearchTerm(cleanVal);
+      if (matched) {
+        setScanFeedback({
+          type: 'success',
+          message: `Barcode "${cleanVal}" terdeteksi untuk "${matched.nama_barang}". Memfilter riwayat faktur masuk...`,
+        });
+      } else {
+        setScanFeedback({
+          type: 'info',
+          message: `Menyaring transaksi dengan kata kunci: "${cleanVal}"`,
+        });
+      }
+      setTimeout(() => setScanFeedback(null), 5000);
+    }
+  };
 
   const handleOpenAdd = () => {
     const nextSeq = transaksiMasuk.length + 1;
@@ -145,16 +205,44 @@ export const TransaksiMasukView: React.FC = () => {
           </p>
         </div>
 
-        {can('manage_inventory') && (
+        <div className="flex items-center gap-3">
           <button
-            onClick={handleOpenAdd}
-            className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-2xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
+            type="button"
+            onClick={() => {
+              setScannerMode('search');
+              setShowScanner(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800 rounded-2xl transition-all shadow-xs active:scale-95"
+            title="Scan barcode atau QR code untuk pencarian cepat faktur"
           >
-            <Plus className="w-4 h-4" />
-            <span>Catat Barang Masuk</span>
+            <Barcode className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span>Scan Barcode / QR</span>
           </button>
-        )}
+
+          {can('manage_inventory') && (
+            <button
+              onClick={handleOpenAdd}
+              className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-2xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Catat Barang Masuk</span>
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Barcode Scan Feedback Alert (Capsule Pill styling) */}
+      {scanFeedback && (
+        <div className="flex justify-start">
+          <PillNotification
+            type={scanFeedback.type}
+            title={scanFeedback.type === 'success' ? 'Barang Terdeteksi' : 'Info Pemindai'}
+            message={scanFeedback.message}
+            onClose={() => setScanFeedback(null)}
+            className="w-full max-w-xl"
+          />
+        </div>
+      )}
 
       {/* Transactions Table */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-xs">
@@ -166,8 +254,19 @@ export const TransaksiMasukView: React.FC = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Cari faktur, supplier, atau nama barang..."
-              className="w-full pl-10 pr-4 py-2.5 text-xs bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500 transition-all"
+              className="w-full pl-10 pr-9 py-2.5 text-xs bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500 transition-all"
             />
+            <button
+              type="button"
+              onClick={() => {
+                setScannerMode('search');
+                setShowScanner(true);
+              }}
+              className="absolute right-2.5 top-2 p-1 rounded-lg text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+              title="Scan Barcode / QR dengan Kamera"
+            >
+              <Camera className="w-4 h-4" />
+            </button>
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -231,6 +330,18 @@ export const TransaksiMasukView: React.FC = () => {
               <h3 className="text-base font-black text-slate-900 dark:text-white">Penerimaan Barang</h3>
               <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600 p-1"><X className="w-5 h-5" /></button>
             </div>
+
+            {validationError && (
+              <div className="mx-6 mt-4">
+                <PillNotification
+                  type="error"
+                  title="Validasi Gagal"
+                  message={validationError}
+                  onClose={() => setValidationError('')}
+                />
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto scrollbar-thin">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -249,10 +360,41 @@ export const TransaksiMasukView: React.FC = () => {
                 </FormSelect>
               </div>
               <div>
-                <FormLabel required>Barang</FormLabel>
-                <FormSelect value={barangId} onChange={(e) => handleBarangChange(Number(e.target.value))} required>
-                  {barang.map(b => <option key={b.id} value={b.id}>{b.nama_barang} (Stok: {b.stok})</option>)}
-                </FormSelect>
+                <div className="flex items-center justify-between mb-1.5">
+                  <FormLabel required>Pilih Barang</FormLabel>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScannerMode('select_barang');
+                      setShowScanner(true);
+                    }}
+                    className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1.5 shadow-xs"
+                    title="Buka kamera untuk scan barcode kemasan barang"
+                  >
+                    <Camera className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>Scan Barcode Kemasan</span>
+                  </button>
+                </div>
+                <div className="flex gap-2">
+                  <FormSelect value={barangId} onChange={(e) => handleBarangChange(Number(e.target.value))} required className="flex-1">
+                    {barang.map(b => (
+                      <option key={b.id} value={b.id}>
+                        {b.nama_barang} (Stok: {b.stok}) · {b.kode_barang} {b.barcode ? `[EAN: ${b.barcode}]` : ''}
+                      </option>
+                    ))}
+                  </FormSelect>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScannerMode('select_barang');
+                      setShowScanner(true);
+                    }}
+                    className="p-2.5 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-colors shrink-0"
+                    title="Scan Barcode / QR Barang dengan Kamera"
+                  >
+                    <Barcode className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
               <div>
                 <FormLabel required>Jumlah</FormLabel>
@@ -298,6 +440,23 @@ export const TransaksiMasukView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Barcode / QR Code Scanner Modal */}
+      <BarcodeScannerModal
+        isOpen={showScanner}
+        onClose={() => setShowScanner(false)}
+        onScan={handleScan}
+        title={
+          scannerMode === 'select_barang'
+            ? 'Scan Barcode / QR Barang Masuk'
+            : 'Scan Barcode / QR Faktur / Barang'
+        }
+        registeredSerials={
+          barang
+            .map((b) => b.barcode)
+            .filter(Boolean) as string[]
+        }
+      />
     </div>
   );
 };

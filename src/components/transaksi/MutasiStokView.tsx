@@ -21,11 +21,14 @@ import {
   X,
   Truck,
   TrendingUp,
-  Boxes
+  Boxes,
+  Camera,
+  Barcode,
 } from 'lucide-react';
 import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
-import { MutasiStok } from '../../types';
+import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
+import { PillNotification } from '../common/PillNotification';
 
 export const MutasiStokView: React.FC = () => {
   const { mutasiStok, barang, transferBarangRak } = useInventory();
@@ -50,6 +53,59 @@ export const MutasiStokView: React.FC = () => {
   const [transferJumlah, setTransferJumlah] = useState<number>(1);
   const [transferCatatan, setTransferCatatan] = useState('');
   const [transferError, setTransferError] = useState('');
+
+  // Scanner State
+  const [showScanner, setShowScanner] = useState(false);
+  const [scannerMode, setScannerMode] = useState<'search' | 'transfer_barang'>('search');
+  const [scanFeedback, setScanFeedback] = useState<{ type: 'success' | 'warning' | 'info'; message: string } | null>(null);
+
+  const handleScan = (scannedVal: string) => {
+    const cleanVal = scannedVal.trim();
+    if (!cleanVal) return;
+
+    if (scannerMode === 'transfer_barang') {
+      const matched = barang.find(
+        (b) =>
+          (b.barcode && b.barcode.toLowerCase() === cleanVal.toLowerCase()) ||
+          b.kode_barang.toLowerCase() === cleanVal.toLowerCase() ||
+          (b.serial_number && b.serial_number.toLowerCase().includes(cleanVal.toLowerCase()))
+      );
+
+      if (matched) {
+        setTransferBarang(matched.id);
+        setTransferError('');
+        setScanFeedback({
+          type: 'success',
+          message: `Barang relokasi terpilih: "${matched.nama_barang}" (${matched.kode_barang}) - Rak asal: ${matched.lokasi_rak || 'Gudang Utama'}`,
+        });
+      } else {
+        setTransferError(`Barcode "${cleanVal}" tidak cocok dengan barang di katalog.`);
+      }
+      setTimeout(() => setScanFeedback(null), 4000);
+    } else if (scannerMode === 'search') {
+      const matched = barang.find(
+        (b) =>
+          (b.barcode && b.barcode.toLowerCase() === cleanVal.toLowerCase()) ||
+          b.kode_barang.toLowerCase() === cleanVal.toLowerCase()
+      );
+
+      if (matched) {
+        setSelectedBarangId(String(matched.id));
+        setSearchTerm('');
+        setScanFeedback({
+          type: 'success',
+          message: `Menampilkan riwayat mutasi alur untuk "${matched.nama_barang}" (${matched.kode_barang})`,
+        });
+      } else {
+        setSearchTerm(cleanVal);
+        setScanFeedback({
+          type: 'info',
+          message: `Menyaring mutasi stok dengan kata kunci: "${cleanVal}"`,
+        });
+      }
+      setTimeout(() => setScanFeedback(null), 4000);
+    }
+  };
 
   // Preset rack options for quick transfer
   const rackPresets = [
@@ -220,6 +276,19 @@ export const MutasiStokView: React.FC = () => {
 
         {/* Real-time Controls & Quick Actions */}
         <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              setScannerMode('search');
+              setShowScanner(true);
+            }}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 border border-indigo-200 dark:border-indigo-800 rounded-lg transition-colors shadow-xs"
+            title="Scan Barcode / QR untuk melacak histori mutasi barang"
+          >
+            <Barcode className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+            <span>Scan Barcode / QR</span>
+          </button>
+
           {can('manage_inventory') && (
             <button
               onClick={handleOpenTransfer}
@@ -231,7 +300,6 @@ export const MutasiStokView: React.FC = () => {
             </button>
           )}
 
-
           <button
             onClick={exportCSV}
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 rounded-lg transition-colors"
@@ -242,6 +310,19 @@ export const MutasiStokView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Barcode Scan Feedback Alert (Capsule Pill styling) */}
+      {scanFeedback && (
+        <div className="flex justify-start">
+          <PillNotification
+            type={scanFeedback.type}
+            title={scanFeedback.type === 'success' ? 'Barang Teridentifikasi' : 'Info Pemindai'}
+            message={scanFeedback.message}
+            onClose={() => setScanFeedback(null)}
+            className="w-full max-w-xl"
+          />
+        </div>
+      )}
 
       {/* 3 Metric Cards for Flow Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -332,8 +413,19 @@ export const MutasiStokView: React.FC = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Cari asal, tujuan, SKU, atau referensi..."
-              className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-hidden focus:border-red-500"
+              className="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-hidden focus:border-red-500"
             />
+            <button
+              type="button"
+              onClick={() => {
+                setScannerMode('search');
+                setShowScanner(true);
+              }}
+              className="absolute right-2 top-2 text-slate-400 hover:text-indigo-600 transition-colors p-0.5"
+              title="Scan Barcode / QR Barang"
+            >
+              <Camera className="w-3.5 h-3.5" />
+            </button>
           </div>
 
           <div>
@@ -652,27 +744,59 @@ export const MutasiStokView: React.FC = () => {
             </div>
 
             {transferError && (
-              <div className="mx-6 mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900 text-xs">
-                {transferError}
+              <div className="mx-6 mt-4">
+                <PillNotification
+                  type="error"
+                  title="Gagal Mutasi Rak"
+                  message={transferError}
+                  onClose={() => setTransferError('')}
+                />
               </div>
             )}
 
             <form onSubmit={handleSubmitTransfer} className="p-6 space-y-4 text-xs">
               <div>
-                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Pilih Barang yang Dipindahkan <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={transferBarang}
-                  onChange={(e) => setTransferBarang(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white font-medium"
-                >
-                  {barang.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.kode_barang} - {b.nama_barang} (Rak Asal: {b.lokasi_rak || 'Gudang Utama'}, Stok: {b.stok})
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-medium text-slate-700 dark:text-slate-300">
+                    Pilih Barang yang Dipindahkan <span className="text-red-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScannerMode('transfer_barang');
+                      setShowScanner(true);
+                    }}
+                    className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 flex items-center gap-1 transition-colors"
+                    title="Scan barcode kemasan atau label rak barang"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>Scan Barcode</span>
+                  </button>
+                </div>
+                <div className="flex gap-2">
+                  <select
+                    value={transferBarang}
+                    onChange={(e) => setTransferBarang(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white font-medium flex-1"
+                  >
+                    {barang.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.kode_barang} - {b.nama_barang} (Rak Asal: {b.lokasi_rak || 'Gudang Utama'}, Stok: {b.stok})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScannerMode('transfer_barang');
+                      setShowScanner(true);
+                    }}
+                    className="p-2 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 transition-colors shrink-0"
+                    title="Scan Barcode / QR Barang"
+                  >
+                    <Barcode className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
               {/* Current origin info */}
@@ -751,6 +875,23 @@ export const MutasiStokView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Barcode / QR Code Scanner Modal */}
+      <BarcodeScannerModal
+        isOpen={showScanner}
+        onClose={() => setShowScanner(false)}
+        onScan={handleScan}
+        title={
+          scannerMode === 'transfer_barang'
+            ? 'Scan Barcode / QR Barang yang Dipindahkan'
+            : 'Scan Barcode / QR Lacak Riwayat Alur'
+        }
+        registeredSerials={
+          barang
+            .map((b) => b.barcode)
+            .filter(Boolean) as string[]
+        }
+      />
     </div>
   );
 };

@@ -22,6 +22,7 @@ import { TransaksiKeluar } from '../../types';
 import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
 import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
+import { PillNotification } from '../common/PillNotification';
 
 interface PerpindahanBarangViewProps {
   onNavigate?: (view: string) => void;
@@ -85,6 +86,8 @@ export const PerpindahanBarangView: React.FC<PerpindahanBarangViewProps> = ({ on
   const [keperluan, setKeperluan] = useState('');
   const [fotoBukti, setFotoBukti] = useState<string>('');
   const [showQRScanner, setShowQRScanner] = useState(false);
+  const [scannerMode, setScannerMode] = useState<'search' | 'barang' | 'serial'>('serial');
+  const [scanFeedback, setScanFeedback] = useState<{ type: 'success' | 'warning' | 'info'; message: string } | null>(null);
 
   // Serial numbers recorded in Outbound / Distribusi transactions for the selected item
   const outboundSerialsForItem = React.useMemo(() => {
@@ -316,16 +319,44 @@ export const PerpindahanBarangView: React.FC<PerpindahanBarangViewProps> = ({ on
           </p>
         </div>
 
-        {can('manage_inventory') && (
+        <div className="flex items-center gap-3">
           <button
-            onClick={handleOpenAdd}
-            className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-2xl shadow-lg shadow-purple-600/20 transition-all active:scale-95"
+            type="button"
+            onClick={() => {
+              setScannerMode('search');
+              setShowQRScanner(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 hover:bg-purple-100 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-800 rounded-2xl transition-all shadow-xs active:scale-95"
+            title="Scan Barcode / QR Surat Perpindahan atau Serial Number"
           >
-            <Plus className="w-4 h-4" />
-            <span>Catat Perpindahan Baru</span>
+            <Barcode className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+            <span>Scan Barcode / QR</span>
           </button>
-        )}
+
+          {can('manage_inventory') && (
+            <button
+              onClick={handleOpenAdd}
+              className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-2xl shadow-lg shadow-purple-600/20 transition-all active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Catat Perpindahan Baru</span>
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Barcode Scan Feedback Alert (Capsule Pill styling) */}
+      {scanFeedback && (
+        <div className="flex justify-start">
+          <PillNotification
+            type={scanFeedback.type}
+            title={scanFeedback.type === 'success' ? 'Barang Teridentifikasi' : 'Info Pemindai'}
+            message={scanFeedback.message}
+            onClose={() => setScanFeedback(null)}
+            className="w-full max-w-xl"
+          />
+        </div>
+      )}
 
       {/* KPI Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -370,8 +401,19 @@ export const PerpindahanBarangView: React.FC<PerpindahanBarangViewProps> = ({ on
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Cari no surat, penerima, atau barang..."
-              className="w-full pl-10 pr-4 py-2.5 text-xs bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-purple-500 transition-all"
+              className="w-full pl-10 pr-9 py-2.5 text-xs bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-purple-500 transition-all"
             />
+            <button
+              type="button"
+              onClick={() => {
+                setScannerMode('search');
+                setShowQRScanner(true);
+              }}
+              className="absolute right-2.5 top-2 p-1 rounded-lg text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+              title="Scan Barcode / QR dengan Kamera"
+            >
+              <Camera className="w-4 h-4" />
+            </button>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold text-slate-400 uppercase">Filter:</span>
@@ -460,6 +502,17 @@ export const PerpindahanBarangView: React.FC<PerpindahanBarangViewProps> = ({ on
                <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600 p-1"><X className="w-5 h-5" /></button>
             </div>
             
+            {validationError && (
+              <div className="mx-6 mt-4">
+                <PillNotification
+                  type="error"
+                  title="Validasi Gagal"
+                  message={validationError}
+                  onClose={() => setValidationError('')}
+                />
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto scrollbar-thin">
                <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -473,10 +526,37 @@ export const PerpindahanBarangView: React.FC<PerpindahanBarangViewProps> = ({ on
                </div>
 
                <div>
-                  <FormLabel required>Pilih Barang</FormLabel>
-                  <FormSelect value={barangId} onChange={(e) => handleBarangChange(Number(e.target.value))} required>
-                    {barang.map(b => <option key={b.id} value={b.id}>{b.nama_barang} (Stok: {b.stok})</option>)}
-                  </FormSelect>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <FormLabel required>Pilih Barang</FormLabel>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScannerMode('barang');
+                        setShowQRScanner(true);
+                      }}
+                      className="text-[10px] font-bold text-purple-600 dark:text-purple-400 hover:text-purple-700 flex items-center gap-1 transition-colors"
+                      title="Scan barcode kemasan barang"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>Scan Barcode</span>
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <FormSelect value={barangId} onChange={(e) => handleBarangChange(Number(e.target.value))} required className="flex-1">
+                      {barang.map(b => <option key={b.id} value={b.id}>{b.nama_barang} (Stok: {b.stok}) - {b.kode_barang}</option>)}
+                    </FormSelect>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScannerMode('barang');
+                        setShowQRScanner(true);
+                      }}
+                      className="p-2.5 bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800 rounded-xl hover:bg-purple-100 transition-colors shrink-0"
+                      title="Scan Barcode / QR Barang"
+                    >
+                      <Barcode className="w-4 h-4" />
+                    </button>
+                  </div>
                   <p className="text-[10px] text-purple-600 font-bold mt-1">Stok fisik tidak berkurang pada perpindahan alur.</p>
                </div>
 
@@ -486,10 +566,35 @@ export const PerpindahanBarangView: React.FC<PerpindahanBarangViewProps> = ({ on
                     <FormInput type="text" value={model} onChange={(e) => setModel(e.target.value)} />
                   </div>
                   <div>
-                    <FormLabel>Serial Number</FormLabel>
-                    <div className="flex gap-1">
-                       <FormInput type="text" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} className="font-mono" />
-                       <button type="button" onClick={handleFetchSerial} className="p-2.5 bg-purple-100 dark:bg-purple-900/40 text-purple-600 rounded-xl hover:bg-purple-200"><Barcode className="w-4 h-4" /></button>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <FormLabel>Serial Number</FormLabel>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setScannerMode('serial');
+                          setShowQRScanner(true);
+                        }}
+                        className="text-[10px] font-bold text-purple-600 dark:text-purple-400 hover:text-purple-700 flex items-center gap-1 transition-colors"
+                        title="Buka kamera untuk scan SN unit"
+                      >
+                        <Camera className="w-3.5 h-3.5" />
+                        <span>Scan SN</span>
+                      </button>
+                    </div>
+                    <div className="flex gap-1.5">
+                       <FormInput type="text" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="Contoh: SN-12345" className="font-mono flex-1" />
+                       <button type="button" onClick={handleFetchSerial} className="p-2.5 bg-purple-100 dark:bg-purple-900/40 text-purple-600 rounded-xl hover:bg-purple-200 transition-colors" title="Ambil SN unit yang tersedia"><Barcode className="w-4 h-4" /></button>
+                       <button
+                         type="button"
+                         onClick={() => {
+                           setScannerMode('serial');
+                           setShowQRScanner(true);
+                         }}
+                         className="p-2.5 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors"
+                         title="Buka Kamera Scan SN"
+                       >
+                         <Camera className="w-4 h-4" />
+                       </button>
                     </div>
                   </div>
                </div>
@@ -543,16 +648,65 @@ export const PerpindahanBarangView: React.FC<PerpindahanBarangViewProps> = ({ on
       <BarcodeScannerModal
         isOpen={showQRScanner}
         onClose={() => setShowQRScanner(false)}
-        onScan={(scannedVal) => setSerialNumber(scannedVal)}
-        title="Scan Serial Number"
+        onScan={(scannedVal) => {
+          const cleanVal = scannedVal.trim();
+          if (!cleanVal) return;
+
+          if (scannerMode === 'barang') {
+            const matched = barang.find(
+              (b) =>
+                (b.barcode && b.barcode.toLowerCase() === cleanVal.toLowerCase()) ||
+                b.kode_barang.toLowerCase() === cleanVal.toLowerCase() ||
+                (b.serial_number && b.serial_number.toLowerCase().includes(cleanVal.toLowerCase()))
+            );
+
+            if (matched) {
+              handleBarangChange(matched.id);
+              setValidationError('');
+              setScanFeedback({
+                type: 'success',
+                message: `Barang terpilih: "${matched.nama_barang}" (${matched.kode_barang})`,
+              });
+              setTimeout(() => setScanFeedback(null), 4000);
+            } else {
+              setValidationError(`Barcode "${cleanVal}" tidak cocok dengan data barang di katalog.`);
+            }
+          } else if (scannerMode === 'serial') {
+            setSerialNumber((prev) => (prev ? `${prev}, ${cleanVal}` : cleanVal));
+            setValidationError('');
+            setScanFeedback({
+              type: 'success',
+              message: `Serial Number "${cleanVal}" berhasil dimasukkan.`,
+            });
+            setTimeout(() => setScanFeedback(null), 4000);
+          } else if (scannerMode === 'search') {
+            setSearchTerm(cleanVal);
+            setScanFeedback({
+              type: 'info',
+              message: `Menyaring perpindahan barang dengan kata kunci: "${cleanVal}"`,
+            });
+            setTimeout(() => setScanFeedback(null), 4000);
+          }
+        }}
+        title={
+          scannerMode === 'barang'
+            ? 'Scan Barcode / QR Barang'
+            : scannerMode === 'search'
+            ? 'Scan Barcode / QR Cari Perpindahan'
+            : 'Scan Serial Number (SN)'
+        }
         registeredSerials={
-          outboundSerialsForItem.length > 0
-            ? outboundSerialsForItem.map((i) => i.serial)
+          scannerMode === 'serial'
+            ? outboundSerialsForItem.length > 0
+              ? outboundSerialsForItem.map((i) => i.serial)
+              : barang
+                  .find((b) => b.id === Number(barangId))
+                  ?.serial_number?.split(/[,;\n]+/)
+                  .map((s) => s.trim())
+                  .filter(Boolean) || []
             : barang
-                .find((b) => b.id === Number(barangId))
-                ?.serial_number?.split(/[,;\n]+/)
-                .map((s) => s.trim())
-                .filter(Boolean) || []
+                .map((b) => b.barcode)
+                .filter(Boolean) as string[]
         }
       />
 

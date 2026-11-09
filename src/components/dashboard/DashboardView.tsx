@@ -29,10 +29,12 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Cell
+  Cell,
+  ResponsiveContainer
 } from 'recharts';
 import { useAuth } from '../../context/AuthContext';
 import { useInventory } from '../../context/InventoryContext';
+import { PillNotification } from '../common/PillNotification';
 
 interface DashboardProps {
   onNavigate: (view: string) => void;
@@ -120,11 +122,32 @@ export const DashboardView: React.FC<DashboardProps> = ({ onNavigate, onOpenMVCM
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {can('manage_transactions') && (
+            <button
+              type="button"
+              onClick={() => onNavigate('transaksi_masuk')}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors shadow-2xs cursor-pointer"
+            >
+              <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Penerimaan Masuk</span>
+            </button>
+          )}
+          {can('manage_transactions') && (
+            <button
+              type="button"
+              onClick={() => onNavigate('transaksi_keluar')}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors shadow-2xs cursor-pointer"
+            >
+              <FileText className="w-3.5 h-3.5 text-orange-600" />
+              <span>Pengeluaran DO</span>
+            </button>
+          )}
           {can('manage_inventory') && (
             <button
+              type="button"
               onClick={() => onNavigate('barang')}
-              className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-lg shadow-red-600/20 transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-md shadow-red-600/20 transition-all hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Daftarkan Barang Baru</span>
@@ -149,7 +172,7 @@ export const DashboardView: React.FC<DashboardProps> = ({ onNavigate, onOpenMVCM
               </div>
             </div>
             <div className="mt-3">
-              <div className="text-2xl font-black font-mono text-slate-900 dark:text-white leading-none">
+              <div className="text-2xl font-black font-mono tabular-nums text-slate-900 dark:text-white leading-none">
                 {kpi.value}
               </div>
               <div className="text-[10px] text-slate-400 mt-1.5 font-medium">{kpi.sub}</div>
@@ -158,94 +181,86 @@ export const DashboardView: React.FC<DashboardProps> = ({ onNavigate, onOpenMVCM
         ))}
       </section>
 
-      {/* 3. Alerts Section */}
+      {/* 3. Alerts Section with Pill Notification Design */}
       {stats.barangKritis.length > 0 && (
-        <div className="p-4 rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-linear-to-r from-amber-50/50 to-white dark:from-amber-950/20 dark:to-slate-900 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/60 flex items-center justify-center text-amber-600 shrink-0">
-              <AlertTriangle className="w-5 h-5 animate-pulse" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-amber-900 dark:text-amber-200">
-                Peringatan: {stats.barangKritis.length} Item Mencapai Stok Batas Minimum!
-              </h3>
-              <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5 font-medium">
-                Sistem mendeteksi {stats.barangKritis.length} SKU yang memerlukan restock segera untuk menjamin ketersediaan.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => onNavigate('transaksi_masuk')}
-            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl shrink-0 transition-all shadow-lg shadow-amber-600/20 active:scale-95"
-          >
-            Restok Sekarang
-          </button>
+        <div className="w-full">
+          <PillNotification
+            type="warning"
+            title={`Peringatan: ${stats.barangKritis.length} SKU Mencapai Batas Stok Minimum!`}
+            message={`Item kritis: ${stats.barangKritis.slice(0, 3).map(b => `${b.nama_barang} (sisa ${b.stok})`).join(', ')}${stats.barangKritis.length > 3 ? ` dan ${stats.barangKritis.length - 3} lainnya` : ''}. Segera lakukan restok ketersediaan.`}
+            action={{
+              label: 'Restok Sekarang',
+              onClick: () => onNavigate('transaksi_masuk'),
+            }}
+            className="w-full shadow-md"
+          />
         </div>
       )}
 
       {/* 4. Analytics Row: Distribution Chart & Category Stats */}
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Distribution Bar Chart (8/12) */}
-        <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs">
-          <div className="flex items-center justify-between mb-8">
+        <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-indigo-600" />
-                Alur Distribusi & Ketersediaan
+                <span>Alur Distribusi &amp; Ketersediaan</span>
               </h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">Analisis visual penyebaran unit inventaris organisasi</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Analisis visual penyebaran kuantitas unit aset inventaris</p>
             </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-[10px] font-bold text-slate-500 font-mono tracking-tight">
-              <Activity className="w-3 h-3 text-emerald-500" />
-              LIVE UPDATE
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+              <span>Sinkronisasi Otomatis</span>
+              <span aria-hidden="true">·</span>
+              <span className="font-mono text-[11px]">InnoDB</span>
             </div>
           </div>
 
-          <div className="h-64 w-full flex justify-center">
-            <BarChart
-              width={560}
-              height={260}
-              data={distributionData}
-              margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-              barSize={45}
-            >
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.5} />
-              <XAxis 
-                dataKey="name" 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{ fontSize: 11, fontWeight: 700, fill: '#64748b' }}
-                dy={10}
-              />
-              <YAxis 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{ fontSize: 10, fill: '#94a3b8' }} 
-              />
-              <Tooltip 
-                cursor={{ fill: 'rgba(0,0,0,0.02)' }}
-                contentStyle={{ 
-                  borderRadius: '16px', 
-                  border: '1px solid #f1f5f9', 
-                  boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
-                  fontSize: '11px',
-                  fontWeight: 'bold',
-                  padding: '12px'
-                }}
-              />
-              <Bar dataKey="total" radius={[8, 8, 0, 0]}>
-                {distributionData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.fill} />
-                ))}
-              </Bar>
-            </BarChart>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart
+                data={distributionData}
+                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                barSize={40}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.5} />
+                <XAxis 
+                  dataKey="name" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 11, fontWeight: 700, fill: '#64748b' }}
+                  dy={10}
+                />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fill: '#94a3b8' }} 
+                />
+                <Tooltip 
+                  cursor={{ fill: 'rgba(0,0,0,0.03)' }}
+                  contentStyle={{ 
+                    borderRadius: '16px', 
+                    border: '1px solid #e2e8f0', 
+                    boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    padding: '10px 14px'
+                  }}
+                />
+                <Bar dataKey="total" radius={[8, 8, 0, 0]}>
+                  {distributionData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
 
-          <div className="grid grid-cols-4 gap-4 mt-10">
+          <div className="grid grid-cols-4 gap-3 mt-6">
             {distributionData.map((item, idx) => (
-              <div key={idx} className="bg-slate-50/50 dark:bg-slate-800/30 p-2.5 rounded-2xl border border-slate-100 dark:border-slate-800/50 text-center">
-                <div className="text-lg font-black text-slate-900 dark:text-white font-mono leading-none">{item.total.toLocaleString('id-ID')}</div>
-                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-1.5">{item.name}</div>
+              <div key={idx} className="bg-slate-50/70 dark:bg-slate-800/40 p-3 rounded-2xl border border-slate-100 dark:border-slate-800/60 text-center">
+                <div className="text-base font-black text-slate-900 dark:text-white font-mono tabular-nums leading-none">{item.total.toLocaleString('id-ID')}</div>
+                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1.5">{item.name}</div>
               </div>
             ))}
           </div>

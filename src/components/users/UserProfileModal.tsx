@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, User, Key, Mail, Shield, Check, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useInventory } from '../../context/InventoryContext';
+import { PillNotification } from '../common/PillNotification';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -18,48 +19,82 @@ export const UserProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [alertNotification, setAlertNotification] = useState<{
+    type: 'warning' | 'error' | 'success' | 'info';
+    title: string;
+    message: string;
+  } | null>(null);
 
   if (!isOpen || !user) return null;
 
   const handleProfileSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!namaLengkap.trim() || !email.trim()) {
-      setError('Nama lengkap dan email tidak boleh kosong.');
+      setAlertNotification({
+        type: 'warning',
+        title: 'Data Tidak Lengkap',
+        message: 'Nama lengkap dan email tidak boleh kosong.',
+      });
       return;
     }
 
     updateProfile(namaLengkap, email);
-    setSuccess('Profil berhasil diperbarui!');
+    setAlertNotification({
+      type: 'success',
+      title: 'Profil Diperbarui!',
+      message: 'Perubahan profil Anda telah tersimpan dengan aman.',
+    });
     setFlash('success', 'Profil pengguna berhasil diperbarui ke database.');
     setTimeout(() => {
-      setSuccess('');
+      setAlertNotification(null);
       onClose();
-    }, 1200);
+    }, 1500);
   };
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPassword || newPassword.length < 6) {
-      setError('Kata sandi baru minimal harus 6 karakter.');
+      setAlertNotification({
+        type: 'warning',
+        title: 'Kata Sandi Terlalu Pendek',
+        message: 'Kata sandi baru minimal harus 6 karakter.',
+      });
       return;
     }
+
+    // Exact check matching user reference image
+    if (!/[A-Z]/.test(newPassword)) {
+      setAlertNotification({
+        type: 'warning',
+        title: 'Must have A-Z!',
+        message: 'Password contain letter form A to Z!',
+      });
+      return;
+    }
+
     if (newPassword !== confirmPassword) {
-      setError('Konfirmasi kata sandi tidak cocok.');
+      setAlertNotification({
+        type: 'warning',
+        title: 'Konfirmasi Sandi Gagal',
+        message: 'Konfirmasi kata sandi tidak cocok dengan kata sandi baru.',
+      });
       return;
     }
 
     changePassword(currentPassword, newPassword);
-    setSuccess('Kata sandi berhasil diubah!');
+    setAlertNotification({
+      type: 'success',
+      title: 'Kata Sandi Berhasil Diubah!',
+      message: 'Kata sandi akun Anda telah diperbarui dengan sukses.',
+    });
     setFlash('success', 'Kata sandi akun Anda telah berhasil diperbarui.');
     setTimeout(() => {
-      setSuccess('');
+      setAlertNotification(null);
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       onClose();
-    }, 1200);
+    }, 1500);
   };
 
   return (
@@ -87,7 +122,7 @@ export const UserProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose 
         {/* Tab switch */}
         <div className="flex border-b border-slate-100 dark:border-slate-800 px-6 pt-2">
           <button
-            onClick={() => { setActiveTab('profile'); setError(''); setSuccess(''); }}
+            onClick={() => { setActiveTab('profile'); setAlertNotification(null); }}
             className={`pb-2.5 text-xs font-medium border-b-2 mr-6 transition-colors ${
               activeTab === 'profile'
                 ? 'border-red-600 text-red-600 dark:text-red-400 font-semibold'
@@ -97,7 +132,7 @@ export const UserProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose 
             Informasi Profil
           </button>
           <button
-            onClick={() => { setActiveTab('password'); setError(''); setSuccess(''); }}
+            onClick={() => { setActiveTab('password'); setAlertNotification(null); }}
             className={`pb-2.5 text-xs font-medium border-b-2 transition-colors ${
               activeTab === 'password'
                 ? 'border-red-600 text-red-600 dark:text-red-400 font-semibold'
@@ -110,18 +145,14 @@ export const UserProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose 
 
         {/* Form Body */}
         <div className="p-6">
-          {error && (
-            <div className="mb-4 p-2.5 text-xs rounded bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {success && (
-            <div className="mb-4 p-2.5 text-xs rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900 flex items-center gap-2">
-              <Check className="w-4 h-4 shrink-0" />
-              <span>{success}</span>
-            </div>
+          {alertNotification && (
+            <PillNotification
+              type={alertNotification.type}
+              title={alertNotification.title}
+              message={alertNotification.message}
+              onClose={() => setAlertNotification(null)}
+              className="mb-4"
+            />
           )}
 
           {activeTab === 'profile' ? (

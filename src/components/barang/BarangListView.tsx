@@ -19,6 +19,8 @@ import { Barang, Kategori, Satuan } from '../../types';
 import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
 import { mysql } from '../../db/mysqlEngine';
+import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
+import { PillNotification } from '../common/PillNotification';
 
 // --- Reusable Form Components ---
 const FormLabel: React.FC<{ children: React.ReactNode; required?: boolean }> = ({ children, required }) => (
@@ -63,6 +65,49 @@ export const BarangListView: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<Barang | null>(null);
   const [itemToDelete, setItemToDelete] = useState<Barang | null>(null);
   const [modalError, setModalError] = useState('');
+
+  // Barcode / QR Scanner state
+  const [showScannerModal, setShowScannerModal] = useState(false);
+  const [scannerMode, setScannerMode] = useState<'search' | 'form_barcode'>('search');
+  const [scanNotification, setScanNotification] = useState<{ type: 'success' | 'info'; message: string } | null>(null);
+
+  const handleScan = (scannedVal: string) => {
+    const cleanVal = scannedVal.trim();
+    if (!cleanVal) return;
+
+    if (scannerMode === 'search') {
+      // Find matching item by barcode, kode_barang, or serial_number
+      const matched = barang.find(
+        (b) =>
+          (b.barcode && b.barcode.toLowerCase() === cleanVal.toLowerCase()) ||
+          b.kode_barang.toLowerCase() === cleanVal.toLowerCase() ||
+          (b.serial_number && b.serial_number.toLowerCase().includes(cleanVal.toLowerCase()))
+      );
+
+      setSearchTerm(cleanVal);
+      if (matched) {
+        setSelectedItem(matched);
+        setShowDetailModal(true);
+        setScanNotification({
+          type: 'success',
+          message: `Barang teridentifikasi: "${matched.nama_barang}" (${matched.kode_barang})`,
+        });
+      } else {
+        setScanNotification({
+          type: 'info',
+          message: `Barcode/QR "${cleanVal}" terbaca. Menampilkan hasil filter katalog...`,
+        });
+      }
+      setTimeout(() => setScanNotification(null), 5000);
+    } else if (scannerMode === 'form_barcode') {
+      setFormState((prev) => ({ ...prev, barcode: cleanVal }));
+      setScanNotification({
+        type: 'success',
+        message: `Barcode berhasil dimasukkan: ${cleanVal}`,
+      });
+      setTimeout(() => setScanNotification(null), 4000);
+    }
+  };
 
   // Form State
   const [formState, setFormState] = useState({
@@ -288,6 +333,19 @@ export const BarangListView: React.FC = () => {
 
         <div className="flex items-center gap-3">
           <button
+            type="button"
+            onClick={() => {
+              setScannerMode('search');
+              setShowScannerModal(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 rounded-2xl transition-all shadow-xs active:scale-95"
+            title="Scan barcode atau QR code fisik untuk mencari barang seketika"
+          >
+            <Barcode className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <span>Scan Barcode / QR</span>
+          </button>
+
+          <button
             onClick={exportCSV}
             className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl hover:bg-slate-50 transition-all"
           >
@@ -307,6 +365,19 @@ export const BarangListView: React.FC = () => {
         </div>
       </div>
 
+      {/* Barcode Scan Notification Alert (Capsule Pill styling) */}
+      {scanNotification && (
+        <div className="flex justify-start">
+          <PillNotification
+            type={scanNotification.type}
+            title={scanNotification.type === 'success' ? 'Barcode Berhasil Dipindai' : 'Informasi Scanner'}
+            message={scanNotification.message}
+            onClose={() => setScanNotification(null)}
+            className="w-full max-w-xl"
+          />
+        </div>
+      )}
+
       {/* Filter and Search Bar */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-xs">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -317,8 +388,19 @@ export const BarangListView: React.FC = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Cari kode, nama, atau rak..."
-              className="w-full pl-10 pr-4 py-2.5 text-xs bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-red-500 transition-all"
+              className="w-full pl-10 pr-9 py-2.5 text-xs bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-red-500 transition-all"
             />
+            <button
+              type="button"
+              onClick={() => {
+                setScannerMode('search');
+                setShowScannerModal(true);
+              }}
+              className="absolute right-2.5 top-2 p-1 rounded-lg text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+              title="Scan Barcode / QR dengan Kamera"
+            >
+              <Camera className="w-4 h-4" />
+            </button>
           </div>
 
           <select
@@ -451,9 +533,13 @@ export const BarangListView: React.FC = () => {
              </div>
              
              {modalError && (
-               <div className="mx-6 mt-4 p-3 rounded-xl bg-red-50 text-red-600 border border-red-100 text-xs flex items-center gap-2">
-                 <AlertTriangle className="w-4 h-4" />
-                 <span>{modalError}</span>
+               <div className="mx-6 mt-4">
+                 <PillNotification
+                   type="error"
+                   title="Validasi Formulir Gagal"
+                   message={modalError}
+                   onClose={() => setModalError('')}
+                 />
                </div>
              )}
 
@@ -464,8 +550,41 @@ export const BarangListView: React.FC = () => {
                       <FormInput type="text" value={formState.kode_barang} onChange={(e) => setFormState({ ...formState, kode_barang: e.target.value.toUpperCase() })} required readOnly={showEditModal} className="bg-slate-50 font-mono uppercase" />
                    </div>
                    <div>
-                      <FormLabel>Barcode EAN-13</FormLabel>
-                      <FormInput type="text" value={formState.barcode} onChange={(e) => setFormState({ ...formState, barcode: e.target.value })} className="font-mono" />
+                      <div className="flex items-center justify-between mb-1.5">
+                        <FormLabel>Barcode EAN-13</FormLabel>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setScannerMode('form_barcode');
+                            setShowScannerModal(true);
+                          }}
+                          className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1 transition-colors"
+                          title="Buka kamera untuk scan barcode langsung"
+                        >
+                          <Camera className="w-3.5 h-3.5" />
+                          <span>Scan Kamera</span>
+                        </button>
+                      </div>
+                      <div className="relative">
+                        <FormInput
+                          type="text"
+                          value={formState.barcode}
+                          onChange={(e) => setFormState({ ...formState, barcode: e.target.value })}
+                          placeholder="Contoh: 899100100001"
+                          className="font-mono pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setScannerMode('form_barcode');
+                            setShowScannerModal(true);
+                          }}
+                          className="absolute right-2.5 top-2.5 p-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                          title="Scan Barcode / QR dengan Kamera"
+                        >
+                          <Barcode className="w-4 h-4" />
+                        </button>
+                      </div>
                    </div>
                 </div>
 
@@ -599,7 +718,7 @@ export const BarangListView: React.FC = () => {
         </div>
       )}
 
-      {/* Modal: Confirm Delete */}
+       {/* Modal: Confirm Delete */}
       {itemToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
            <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm shadow-2xl p-8 text-center animate-in fade-in zoom-in duration-200">
@@ -615,6 +734,25 @@ export const BarangListView: React.FC = () => {
            </div>
         </div>
       )}
+
+      {/* Barcode / QR Code Scanner Modal */}
+      <BarcodeScannerModal
+        isOpen={showScannerModal}
+        onClose={() => setShowScannerModal(false)}
+        onScan={handleScan}
+        title={
+          scannerMode === 'search'
+            ? 'Scan Barcode / QR untuk Cari Barang'
+            : 'Scan Barcode / QR Produk Baru'
+        }
+        registeredSerials={
+          scannerMode === 'search'
+            ? barang
+                .map((b) => b.barcode)
+                .filter(Boolean) as string[]
+            : []
+        }
+      />
     </div>
   );
 };

@@ -21,6 +21,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useInventory } from '../../context/InventoryContext';
 import { NotificationBell } from '../notifications/NotificationBell';
+import { PillNotification } from './PillNotification';
 
 interface HeaderProps {
   currentView: string;
@@ -484,34 +485,24 @@ export const CodeIgniterHeader: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* CodeIgniter Flashdata Alert Banner */}
+      {/* CodeIgniter Flashdata Notification (Capsule Pill styling) */}
       {flash && (
-        <div
-          className={`px-4 py-2 text-xs flex items-center justify-between border-t transition-all ${
-            flash.type === 'success'
-              ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
-              : flash.type === 'error'
-              ? 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200'
-              : flash.type === 'warning'
-              ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200'
-              : 'bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            {flash.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />}
-            {flash.type === 'error' && <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />}
-            {flash.type === 'warning' && <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />}
-            {flash.type === 'info' && <Info className="w-4 h-4 text-blue-600 shrink-0" />}
-            <span className="font-medium">
-              <span className="font-mono opacity-75 mr-1">[CI Flashdata]:</span> {flash.message}
-            </span>
-          </div>
-          <button
-            onClick={clearFlash}
-            className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
+        <div className="px-4 py-2 flex justify-center bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-200/60 dark:border-slate-800">
+          <PillNotification
+            type={flash.type}
+            title={
+              flash.type === 'success'
+                ? 'Berhasil!'
+                : flash.type === 'error'
+                ? 'Terjadi Kesalahan!'
+                : flash.type === 'warning'
+                ? 'Perhatian!'
+                : 'Informasi Flashdata'
+            }
+            message={flash.message}
+            onClose={clearFlash}
+            className="w-full max-w-xl shadow-md"
+          />
         </div>
       )}
     </header>

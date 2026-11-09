@@ -11,6 +11,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { PillNotification } from '../common/PillNotification';
 
 export const LoginView: React.FC = () => {
   const { login } = useAuth();
@@ -76,9 +77,13 @@ export const LoginView: React.FC = () => {
 
         {/* Error Alert */}
         {error && (
-          <div className="mb-5 p-3 rounded-lg bg-red-950/60 border border-red-800 text-red-300 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
-            <span>{error}</span>
+          <div className="mb-5">
+            <PillNotification
+              type="error"
+              title="Gagal Masuk"
+              message={error}
+              onClose={() => setError('')}
+            />
           </div>
         )}
 
