@@ -29,6 +29,7 @@ import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
 import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
 import { PillNotification } from '../common/PillNotification';
+import { CenteredAlertModal } from '../common/CenteredAlertModal';
 
 export const MutasiStokView: React.FC = () => {
   const { mutasiStok, barang, transferBarangRak } = useInventory();
@@ -53,6 +54,7 @@ export const MutasiStokView: React.FC = () => {
   const [transferJumlah, setTransferJumlah] = useState<number>(1);
   const [transferCatatan, setTransferCatatan] = useState('');
   const [transferError, setTransferError] = useState('');
+  const [successModalMessage, setSuccessModalMessage] = useState<string | null>(null);
 
   // Scanner State
   const [showScanner, setShowScanner] = useState(false);
@@ -177,6 +179,7 @@ export const MutasiStokView: React.FC = () => {
     if (res.success) {
       setShowTransferModal(false);
       setLastSynced(new Date());
+      setSuccessModalMessage(`Mutasi / perpindahan rak barang berhasil dicatat!`);
     } else {
       setTransferError(res.message);
     }
@@ -310,19 +313,6 @@ export const MutasiStokView: React.FC = () => {
           </button>
         </div>
       </div>
-
-      {/* Barcode Scan Feedback Alert (Capsule Pill styling) */}
-      {scanFeedback && (
-        <div className="flex justify-start">
-          <PillNotification
-            type={scanFeedback.type}
-            title={scanFeedback.type === 'success' ? 'Barang Teridentifikasi' : 'Info Pemindai'}
-            message={scanFeedback.message}
-            onClose={() => setScanFeedback(null)}
-            className="w-full max-w-xl"
-          />
-        </div>
-      )}
 
       {/* 3 Metric Cards for Flow Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -891,6 +881,15 @@ export const MutasiStokView: React.FC = () => {
             .map((b) => b.barcode)
             .filter(Boolean) as string[]
         }
+      />
+
+      {/* Centered Success / Alert Modal */}
+      <CenteredAlertModal
+        isOpen={!!successModalMessage}
+        type="success"
+        title="Berhasil!"
+        message={successModalMessage || ''}
+        onClose={() => setSuccessModalMessage(null)}
       />
     </div>
   );

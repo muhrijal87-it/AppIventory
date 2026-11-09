@@ -30,7 +30,7 @@ export const PillNotification: React.FC<PillNotificationProps> = ({
   const typeConfig = {
     warning: {
       container:
-        'bg-[#FFF5EA] dark:bg-[#2B1B10] border border-[#FDBA74] dark:border-[#9A3412] text-[#431407] dark:text-[#FFEDD5] shadow-lg shadow-orange-950/5',
+        'bg-[#FFF5EA] dark:bg-[#2B1B10] border-[1.5px] border-[#FED7AA] dark:border-[#9A3412] text-[#431407] dark:text-[#FFEDD5] shadow-xl shadow-orange-950/15 dark:shadow-black/60 backdrop-blur-md',
       title: 'text-[#431407] dark:text-[#FFEDD5]',
       message: 'text-[#78350F]/85 dark:text-[#FED7AA]/80',
       closeBtn: 'text-[#9A3412]/60 hover:text-[#431407] dark:text-[#FED7AA]/60 dark:hover:text-white',
@@ -44,7 +44,7 @@ export const PillNotification: React.FC<PillNotificationProps> = ({
     },
     success: {
       container:
-        'bg-[#F0FDF4] dark:bg-[#0E2818] border border-[#86EFAC] dark:border-[#166534] text-[#14532D] dark:text-[#DCFCE7] shadow-lg shadow-emerald-950/5',
+        'bg-[#F0FDF4] dark:bg-[#0E2818] border-[1.5px] border-[#86EFAC] dark:border-[#166534] text-[#14532D] dark:text-[#DCFCE7] shadow-xl shadow-emerald-950/15 dark:shadow-black/60 backdrop-blur-md',
       title: 'text-[#14532D] dark:text-[#DCFCE7]',
       message: 'text-[#166534]/85 dark:text-[#BBF7D0]/80',
       closeBtn: 'text-[#166534]/60 hover:text-[#14532D] dark:text-[#BBF7D0]/60 dark:hover:text-white',
@@ -58,7 +58,7 @@ export const PillNotification: React.FC<PillNotificationProps> = ({
     },
     error: {
       container:
-        'bg-[#FFF1F2] dark:bg-[#2D1217] border border-[#FDA4AF] dark:border-[#9F1239] text-[#4C0519] dark:text-[#FFE4E6] shadow-lg shadow-rose-950/5',
+        'bg-[#FFF1F2] dark:bg-[#2D1217] border-[1.5px] border-[#FDA4AF] dark:border-[#9F1239] text-[#4C0519] dark:text-[#FFE4E6] shadow-xl shadow-rose-950/15 dark:shadow-black/60 backdrop-blur-md',
       title: 'text-[#4C0519] dark:text-[#FFE4E6]',
       message: 'text-[#9F1239]/85 dark:text-[#FECDD3]/80',
       closeBtn: 'text-[#9F1239]/60 hover:text-[#4C0519] dark:text-[#FECDD3]/60 dark:hover:text-white',
@@ -72,7 +72,7 @@ export const PillNotification: React.FC<PillNotificationProps> = ({
     },
     info: {
       container:
-        'bg-[#EFF6FF] dark:bg-[#111F36] border border-[#93C5FD] dark:border-[#1E40AF] text-[#1E3A8A] dark:text-[#DBEAFE] shadow-lg shadow-blue-950/5',
+        'bg-[#EFF6FF] dark:bg-[#111F36] border-[1.5px] border-[#93C5FD] dark:border-[#1E40AF] text-[#1E3A8A] dark:text-[#DBEAFE] shadow-xl shadow-blue-950/15 dark:shadow-black/60 backdrop-blur-md',
       title: 'text-[#1E3A8A] dark:text-[#DBEAFE]',
       message: 'text-[#1E40AF]/85 dark:text-[#BFDBFE]/80',
       closeBtn: 'text-[#1E40AF]/60 hover:text-[#1E3A8A] dark:text-[#BFDBFE]/60 dark:hover:text-white',

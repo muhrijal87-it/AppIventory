@@ -345,19 +345,6 @@ export const PerpindahanBarangView: React.FC<PerpindahanBarangViewProps> = ({ on
         </div>
       </div>
 
-      {/* Barcode Scan Feedback Alert (Capsule Pill styling) */}
-      {scanFeedback && (
-        <div className="flex justify-start">
-          <PillNotification
-            type={scanFeedback.type}
-            title={scanFeedback.type === 'success' ? 'Barang Teridentifikasi' : 'Info Pemindai'}
-            message={scanFeedback.message}
-            onClose={() => setScanFeedback(null)}
-            className="w-full max-w-xl"
-          />
-        </div>
-      )}
-
       {/* KPI Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs flex items-center gap-4">

@@ -365,19 +365,6 @@ export const BarangListView: React.FC = () => {
         </div>
       </div>
 
-      {/* Barcode Scan Notification Alert (Capsule Pill styling) */}
-      {scanNotification && (
-        <div className="flex justify-start">
-          <PillNotification
-            type={scanNotification.type}
-            title={scanNotification.type === 'success' ? 'Barcode Berhasil Dipindai' : 'Informasi Scanner'}
-            message={scanNotification.message}
-            onClose={() => setScanNotification(null)}
-            className="w-full max-w-xl"
-          />
-        </div>
-      )}
-
       {/* Filter and Search Bar */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-xs">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">

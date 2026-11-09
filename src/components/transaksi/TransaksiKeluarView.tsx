@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
 import { PillNotification } from '../common/PillNotification';
+import { CenteredAlertModal } from '../common/CenteredAlertModal';
 import {
   ArrowUpFromLine,
   Plus,
@@ -84,6 +85,11 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
   const [scannerMode, setScannerMode] = useState<'serial' | 'barang' | 'transfer_sn' | 'search'>('serial');
   const [scanFeedback, setScanFeedback] = useState<{ type: 'success' | 'warning' | 'info'; message: string } | null>(null);
   const [transferError, setTransferError] = useState('');
+  const [successModalMessage, setSuccessModalMessage] = useState<string | null>(null);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
   // Recall (Tarik Kembali) States
   const [recallModalItem, setRecallModalItem] = useState<TransaksiKeluar | null>(null);
@@ -363,6 +369,7 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
 
     if (res.success) {
       setShowAddModal(false);
+      setSuccessModalMessage(`Pengeluaran barang dengan No. Transaksi ${noTransaksi} berhasil dicatat!`);
     } else {
       setValidationError(res.message);
     }
@@ -401,6 +408,16 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
       (itm && itm.nama_barang.toLowerCase().includes(search))
     );
   });
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage) || 1;
+  const paginatedTransactions = filteredTransactions.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const getLatestRecipient = (originalTrx: TransaksiKeluar) => {
     if (!originalTrx.serial_number) return { penerima: originalTrx.penerima, departemen: originalTrx.departemen };
@@ -465,19 +482,6 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
         </div>
       </div>
 
-      {/* Barcode Scan Feedback Alert (Capsule Pill styling) */}
-      {scanFeedback && (
-        <div className="flex justify-start">
-          <PillNotification
-            type={scanFeedback.type}
-            title={scanFeedback.type === 'success' ? 'Barang Berhasil Dipilih' : 'Info Pemindai'}
-            message={scanFeedback.message}
-            onClose={() => setScanFeedback(null)}
-            className="w-full max-w-xl"
-          />
-        </div>
-      )}
-
       {/* Table Outbound */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-xs">
         <div className="p-4 border-b border-slate-100 dark:border-slate-800">
@@ -503,9 +507,9 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
             </button>
           </div>
         </div>
-        <div className="overflow-x-auto scrollbar-thin">
+        <div className="max-h-[600px] overflow-y-auto overflow-x-auto scrollbar-thin">
           <table className="w-full text-left text-xs min-w-full">
-            <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 font-bold uppercase tracking-widest text-[10px] border-b border-slate-200 dark:border-slate-800">
+            <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 text-slate-500 font-bold uppercase tracking-widest text-[10px] border-b border-slate-200 dark:border-slate-800 shadow-xs">
               <tr>
                 <th className="px-6 py-4 whitespace-nowrap">No. Transaksi</th>
                 <th className="px-6 py-4 whitespace-nowrap">Tanggal</th>
@@ -518,14 +522,14 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {filteredTransactions.length === 0 ? (
+              {paginatedTransactions.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-10 text-center text-slate-400 italic">
                     Belum ada rekaman transaksi barang keluar.
                   </td>
                 </tr>
               ) : (
-                filteredTransactions.map((trx) => {
+                paginatedTransactions.map((trx) => {
                   const itm = barang.find((b) => b.id === trx.barang_id);
                   const petugas = users.find((u) => u.id === trx.petugas_id);
 
@@ -628,6 +632,32 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination Footer */}
+        <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+          <div>
+            Menampilkan <span className="font-bold text-slate-700 dark:text-slate-200">{filteredTransactions.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</span> sampai <span className="font-bold text-slate-700 dark:text-slate-200">{Math.min(currentPage * itemsPerPage, filteredTransactions.length)}</span> dari <span className="font-bold text-slate-700 dark:text-slate-200">{filteredTransactions.length}</span> data transaksi
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              Sebelumnya
+            </button>
+            <span className="px-3 py-1.5 font-mono font-bold text-slate-700 dark:text-slate-200">
+              {currentPage} / {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+              disabled={currentPage === totalPages || totalPages === 0}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              Berikutnya
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1124,6 +1154,15 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
           </div>
         </div>
       )}
+
+      {/* Centered Success / Alert Modal */}
+      <CenteredAlertModal
+        isOpen={!!successModalMessage}
+        type="success"
+        title="Berhasil!"
+        message={successModalMessage || ''}
+        onClose={() => setSuccessModalMessage(null)}
+      />
     </div>
   );
 };

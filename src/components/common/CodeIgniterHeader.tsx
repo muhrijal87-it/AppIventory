@@ -21,7 +21,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useInventory } from '../../context/InventoryContext';
 import { NotificationBell } from '../notifications/NotificationBell';
-import { PillNotification } from './PillNotification';
+
 
 interface HeaderProps {
   currentView: string;
@@ -485,26 +485,6 @@ export const CodeIgniterHeader: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* CodeIgniter Flashdata Notification (Capsule Pill styling) */}
-      {flash && (
-        <div className="px-4 py-2 flex justify-center bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-200/60 dark:border-slate-800">
-          <PillNotification
-            type={flash.type}
-            title={
-              flash.type === 'success'
-                ? 'Berhasil!'
-                : flash.type === 'error'
-                ? 'Terjadi Kesalahan!'
-                : flash.type === 'warning'
-                ? 'Perhatian!'
-                : 'Informasi Flashdata'
-            }
-            message={flash.message}
-            onClose={clearFlash}
-            className="w-full max-w-xl shadow-md"
-          />
-        </div>
-      )}
     </header>
   );
 };

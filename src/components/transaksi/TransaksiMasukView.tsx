@@ -20,6 +20,7 @@ import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
 import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
 import { PillNotification } from '../common/PillNotification';
+import { CenteredAlertModal } from '../common/CenteredAlertModal';
 
 // --- Reusable Form Components ---
 const FormLabel: React.FC<{ children: React.ReactNode; required?: boolean }> = ({ children, required }) => (
@@ -65,6 +66,7 @@ export const TransaksiMasukView: React.FC = () => {
   const [catatan, setCatatan] = useState('');
   const [fotoNota, setFotoNota] = useState<string>('');
   const [validationError, setValidationError] = useState('');
+  const [successModalMessage, setSuccessModalMessage] = useState<string | null>(null);
 
   const handleScan = (scannedVal: string) => {
     const cleanVal = scannedVal.trim();
@@ -179,6 +181,7 @@ export const TransaksiMasukView: React.FC = () => {
     });
 
     setShowAddModal(false);
+    setSuccessModalMessage(`Penerimaan barang dengan No. Faktur ${noFaktur} berhasil dicatat ke dalam database inventaris!`);
   };
 
   const filteredTransactions = transaksiMasuk.filter((t) => {
@@ -231,19 +234,6 @@ export const TransaksiMasukView: React.FC = () => {
         </div>
       </div>
 
-      {/* Barcode Scan Feedback Alert (Capsule Pill styling) */}
-      {scanFeedback && (
-        <div className="flex justify-start">
-          <PillNotification
-            type={scanFeedback.type}
-            title={scanFeedback.type === 'success' ? 'Barang Terdeteksi' : 'Info Pemindai'}
-            message={scanFeedback.message}
-            onClose={() => setScanFeedback(null)}
-            className="w-full max-w-xl"
-          />
-        </div>
-      )}
-
       {/* Transactions Table */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-xs">
         <div className="p-4 border-b border-slate-100 dark:border-slate-800">
@@ -269,9 +259,9 @@ export const TransaksiMasukView: React.FC = () => {
             </button>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="max-h-[600px] overflow-y-auto overflow-x-auto scrollbar-thin">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 font-bold uppercase tracking-widest text-[10px]">
+            <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 text-slate-500 font-bold uppercase tracking-widest text-[10px] shadow-xs">
               <tr>
                 <th className="px-6 py-4">No. Faktur</th>
                 <th className="px-6 py-4">Tanggal</th>
@@ -456,6 +446,15 @@ export const TransaksiMasukView: React.FC = () => {
             .map((b) => b.barcode)
             .filter(Boolean) as string[]
         }
+      />
+
+      {/* Centered Success / Alert Modal */}
+      <CenteredAlertModal
+        isOpen={!!successModalMessage}
+        type="success"
+        title="Berhasil!"
+        message={successModalMessage || ''}
+        onClose={() => setSuccessModalMessage(null)}
       />
     </div>
   );

@@ -33,7 +33,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss, onSelect, onNav
   return (
     <div
       role="alert"
-      className="pointer-events-auto w-full max-w-sm rounded-[24px] bg-[#FFF5EA] dark:bg-[#2B1B10] border border-[#FDBA74] dark:border-[#9A3412] shadow-[0_10px_35px_rgba(249,115,22,0.15)] dark:shadow-black/50 p-3.5 sm:px-5 sm:py-3.5 transition-all duration-300 transform translate-x-0 animate-in slide-in-from-top-3 sm:slide-in-from-right-5 fade-in-50 flex items-center gap-3.5"
+      className="pointer-events-auto w-full sm:w-[380px] max-w-full rounded-[24px] bg-[#FFF5EA] dark:bg-[#2B1B10] border border-[#FDBA74] dark:border-[#9A3412] shadow-[0_10px_35px_rgba(249,115,22,0.15)] dark:shadow-black/50 p-3.5 sm:px-5 sm:py-3.5 transition-all duration-300 transform translate-x-0 animate-in slide-in-from-top-3 sm:slide-in-from-right-5 fade-in-50 flex items-center gap-3.5"
     >
       {/* Icon: solid orange/amber triangle or avatar */}
       {toast.senderAvatar ? (
@@ -103,7 +103,7 @@ export const NotificationToastContainer: React.FC<{ onNavigate?: (view: string) 
   return (
     <aside
       aria-label="Notifikasi Masuk"
-      className="fixed top-16 right-4 sm:right-6 z-[9999] flex flex-col gap-2.5 pointer-events-none max-w-sm w-full"
+      className="fixed top-16 right-4 sm:right-6 z-[9999] flex flex-col gap-2.5 pointer-events-none w-auto max-w-[calc(100vw-2rem)] sm:max-w-[380px]"
     >
       {activeToasts.map((toast) => (
         <ToastItem

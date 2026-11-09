@@ -141,9 +141,6 @@ const MainLayout: React.FC = () => {
         onClose={() => setIsProfileModalOpen(false)}
       />
 
-      {/* Modern Slide-in Toast Notifications */}
-      <NotificationToastContainer onNavigate={setCurrentView} />
-
       {/* Modern Full Notification & Message Center Modal */}
       <NotificationCenterModal onNavigate={setCurrentView} />
     </div>
