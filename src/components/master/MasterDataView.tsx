@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Layers,
   Ruler,
@@ -7,24 +7,28 @@ import {
   Edit,
   Trash2,
   X,
-  Building,
+  Building2,
   Phone,
   Mail,
   MapPin,
-  FolderPlus
+  FolderPlus,
+  UserCheck,
+  Building
 } from 'lucide-react';
 import { Kategori, Satuan, Supplier, Departemen } from '../../types';
 import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
 
-export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'supplier' }> = ({
+export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'supplier' | 'departemen' }> = ({
   initialTab = 'kategori',
 }) => {
   const {
     kategori,
     satuan,
     supplier,
+    departemen,
     barang,
+    transaksiKeluar,
     addKategori,
     updateKategori,
     deleteKategori,
@@ -34,12 +38,22 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
     addSupplier,
     updateSupplier,
     deleteSupplier,
+    addDepartemen,
+    updateDepartemen,
+    deleteDepartemen,
   } = useInventory();
   const { can } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'kategori' | 'satuan' | 'supplier'>(
-    initialTab === 'kategori' || initialTab === 'satuan' || initialTab === 'supplier' ? initialTab : 'kategori'
+  const [activeTab, setActiveTab] = useState<'kategori' | 'satuan' | 'supplier' | 'departemen'>(
+    initialTab || 'kategori'
   );
+
+  // Sync active tab if initialTab prop changes
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   // Kategori Modal & Form
   const [showKatModal, setShowKatModal] = useState(false);
@@ -64,9 +78,18 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
   const [supEmail, setSupEmail] = useState('');
   const [supAlamat, setSupAlamat] = useState('');
 
+  // Departemen Modal & Form
+  const [showDeptModal, setShowDeptModal] = useState(false);
+  const [editingDept, setEditingDept] = useState<Departemen | null>(null);
+  const [deptKode, setDeptKode] = useState('');
+  const [deptNama, setDeptNama] = useState('');
+  const [deptPic, setDeptPic] = useState('');
+  const [deptLokasi, setDeptLokasi] = useState('');
+  const [deptKeterangan, setDeptKeterangan] = useState('');
+
   // Delete confirmation modal state
   const [deleteConfirm, setDeleteConfirm] = useState<{
-    type: 'kategori' | 'satuan' | 'supplier';
+    type: 'kategori' | 'satuan' | 'supplier' | 'departemen';
     id: number;
     title: string;
   } | null>(null);
@@ -76,6 +99,7 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
     if (deleteConfirm.type === 'kategori') deleteKategori(deleteConfirm.id);
     else if (deleteConfirm.type === 'satuan') deleteSatuan(deleteConfirm.id);
     else if (deleteConfirm.type === 'supplier') deleteSupplier(deleteConfirm.id);
+    else if (deleteConfirm.type === 'departemen') deleteDepartemen(deleteConfirm.id);
     setDeleteConfirm(null);
   };
 
@@ -196,8 +220,53 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
     setShowSupModal(false);
   };
 
+  // DEPARTEMEN HANDLERS
+  const openAddDepartemen = () => {
+    setEditingDept(null);
+    const seq = (departemen?.length || 0) + 1;
+    setDeptKode(`DPT-${String(seq).padStart(2, '0')}`);
+    setDeptNama('');
+    setDeptPic('');
+    setDeptLokasi('');
+    setDeptKeterangan('');
+    setShowDeptModal(true);
+  };
+
+  const openEditDepartemen = (d: Departemen) => {
+    setEditingDept(d);
+    setDeptKode(d.kode_departemen);
+    setDeptNama(d.nama_departemen);
+    setDeptPic(d.penanggung_jawab || '');
+    setDeptLokasi(d.lokasi_gedung || '');
+    setDeptKeterangan(d.keterangan || '');
+    setShowDeptModal(true);
+  };
+
+  const handleDeptSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!deptNama.trim()) return;
+    if (editingDept) {
+      updateDepartemen(editingDept.id, {
+        kode_departemen: deptKode.toUpperCase(),
+        nama_departemen: deptNama.trim(),
+        penanggung_jawab: deptPic.trim(),
+        lokasi_gedung: deptLokasi.trim(),
+        keterangan: deptKeterangan.trim(),
+      });
+    } else {
+      addDepartemen({
+        kode_departemen: deptKode.toUpperCase(),
+        nama_departemen: deptNama.trim(),
+        penanggung_jawab: deptPic.trim(),
+        lokasi_gedung: deptLokasi.trim(),
+        keterangan: deptKeterangan.trim(),
+      });
+    }
+    setShowDeptModal(false);
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-200">
       {/* Top Banner */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -205,7 +274,7 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
             Pengelolaan Master Data Inventaris
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Konfigurasi tabel referensi kategori produk, satuan unit barang, dan data rekanan pemasok (supplier).
+            Konfigurasi tabel referensi kategori produk, divisi/departemen kerja, satuan unit, dan rekanan supplier.
           </p>
         </div>
 
@@ -218,6 +287,15 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
               >
                 <Plus className="w-4 h-4" />
                 <span>Tambah Kategori</span>
+              </button>
+            )}
+            {activeTab === 'departemen' && (
+              <button
+                onClick={openAddDepartemen}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-xs transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Tambah Departemen / Divisi</span>
               </button>
             )}
             {activeTab === 'satuan' && (
@@ -255,6 +333,18 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
           >
             <Layers className="w-4 h-4" />
             <span>Kategori Barang ({kategori.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('departemen')}
+            className={`flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
+              activeTab === 'departemen'
+                ? 'border-red-600 text-red-600 dark:text-red-400 font-semibold bg-white dark:bg-slate-900 rounded-t-lg'
+                : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Building2 className="w-4 h-4 text-purple-500" />
+            <span>Data Departemen / Divisi ({(departemen || []).length})</span>
           </button>
 
           <button
@@ -317,19 +407,19 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
                           {can('manage_master_data') && (
                             <button
                               onClick={() => openEditKategori(k)}
-                              className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors"
                               title="Edit Kategori"
                             >
-                              <Edit className="w-3.5 h-3.5" />
+                              <Edit className="w-4 h-4" />
                             </button>
                           )}
                           {can('delete_master_data') && (
                             <button
                               onClick={() => setDeleteConfirm({ type: 'kategori', id: k.id, title: k.nama_kategori })}
-                              className="p-1 text-red-600 hover:bg-red-50 rounded"
-                              title="Hapus Kategori (Hanya Administrator)"
+                              className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors"
+                              title="Hapus Kategori"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           )}
                         </div>
@@ -342,7 +432,86 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
           </div>
         )}
 
-        {/* Tab 2: Satuan */}
+        {/* Tab 2: Departemen / Divisi */}
+        {activeTab === 'departemen' && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800">
+                <tr>
+                  <th className="px-4 py-3">Kode Dept</th>
+                  <th className="px-4 py-3">Nama Departemen / Divisi</th>
+                  <th className="px-4 py-3">Penanggung Jawab (PIC)</th>
+                  <th className="px-4 py-3">Lokasi Gedung / Ruang</th>
+                  <th className="px-4 py-3">Keterangan</th>
+                  <th className="px-4 py-3 text-center">Pengeluaran Barang</th>
+                  <th className="px-4 py-3 text-center">Aksi (Edit / Hapus)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {(departemen || []).map((d) => {
+                  const usageCount = transaksiKeluar.filter((t) => t.departemen === d.nama_departemen).length;
+                  return (
+                    <tr key={d.id} className="hover:bg-slate-50 dark:hover:bg-slate-850">
+                      <td className="px-4 py-3 font-mono font-bold text-purple-600 dark:text-purple-400">
+                        {d.kode_departemen}
+                      </td>
+                      <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">
+                        <div className="flex items-center gap-2">
+                          <Building className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                          <span>{d.nama_departemen}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
+                        <div className="flex items-center gap-1.5">
+                          <UserCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span>{d.penanggung_jawab || '-'}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400 font-mono text-[11px]">
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span>{d.lokasi_gedung || '-'}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-slate-500 max-w-xs">
+                        {d.keterangan || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] ${usageCount > 0 ? 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
+                          {usageCount} Transaksi
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-2">
+                          {can('manage_master_data') && (
+                            <button
+                              onClick={() => openEditDepartemen(d)}
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors"
+                              title="Edit Data Departemen / Divisi"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                          )}
+                          {can('delete_master_data') && (
+                            <button
+                              onClick={() => setDeleteConfirm({ type: 'departemen', id: d.id, title: d.nama_departemen })}
+                              className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors"
+                              title="Hapus Data Departemen"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Tab 3: Satuan */}
         {activeTab === 'satuan' && (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
@@ -373,19 +542,19 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
                           {can('manage_master_data') && (
                             <button
                               onClick={() => openEditSatuan(s)}
-                              className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors"
                               title="Edit Satuan"
                             >
-                              <Edit className="w-3.5 h-3.5" />
+                              <Edit className="w-4 h-4" />
                             </button>
                           )}
                           {can('delete_master_data') && (
                             <button
                               onClick={() => setDeleteConfirm({ type: 'satuan', id: s.id, title: s.nama_satuan })}
-                              className="p-1 text-red-600 hover:bg-red-50 rounded"
-                              title="Hapus Satuan (Hanya Administrator)"
+                              className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors"
+                              title="Hapus Satuan"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           )}
                         </div>
@@ -398,7 +567,7 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
           </div>
         )}
 
-        {/* Tab 3: Supplier */}
+        {/* Tab 4: Supplier */}
         {activeTab === 'supplier' && (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
@@ -436,19 +605,19 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
                         {can('manage_master_data') && (
                           <button
                             onClick={() => openEditSupplier(sup)}
-                            className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors"
                             title="Edit Pemasok"
                           >
-                            <Edit className="w-3.5 h-3.5" />
+                            <Edit className="w-4 h-4" />
                           </button>
                         )}
                         {can('delete_master_data') && (
                           <button
                             onClick={() => setDeleteConfirm({ type: 'supplier', id: sup.id, title: sup.nama_supplier })}
-                            className="p-1 text-red-600 hover:bg-red-50 rounded"
-                            title="Hapus Pemasok (Hanya Administrator)"
+                            className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors"
+                            title="Hapus Pemasok"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         )}
                       </div>
@@ -513,6 +682,95 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
                 </button>
                 <button type="submit" className="px-4 py-1.5 bg-red-600 text-white font-semibold rounded-lg">
                   Simpan Kategori
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Departemen */}
+      {showDeptModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl text-xs space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-purple-500" />
+                <span>{editingDept ? 'Edit Data Departemen / Divisi' : 'Tambah Departemen / Divisi Baru'}</span>
+              </h3>
+              <button onClick={() => setShowDeptModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleDeptSubmit} className="space-y-4">
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Kode Departemen</label>
+                <input
+                  type="text"
+                  required
+                  value={deptKode}
+                  onChange={(e) => setDeptKode(e.target.value.toUpperCase())}
+                  placeholder="Contoh: DPT-01"
+                  className="w-full px-3 py-2 font-mono uppercase bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Nama Departemen / Divisi <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  required
+                  value={deptNama}
+                  onChange={(e) => setDeptNama(e.target.value)}
+                  placeholder="Contoh: Divisi Pengembangan TI"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Penanggung Jawab (PIC / Kepala Divisi)</label>
+                <input
+                  type="text"
+                  value={deptPic}
+                  onChange={(e) => setDeptPic(e.target.value)}
+                  placeholder="Contoh: Riko Gunawan, S.Kom"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Lokasi Gedung / Lantai</label>
+                <input
+                  type="text"
+                  value={deptLokasi}
+                  onChange={(e) => setDeptLokasi(e.target.value)}
+                  placeholder="Contoh: Gedung A - Lantai 3"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Keterangan / Fungsi Divisi</label>
+                <textarea
+                  rows={2}
+                  value={deptKeterangan}
+                  onChange={(e) => setDeptKeterangan(e.target.value)}
+                  placeholder="Deskripsi singkat fungsi operasional divisi..."
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowDeptModal(false)}
+                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-700 dark:text-slate-300 font-semibold"
+                >
+                  Batal
+                </button>
+                <button type="submit" className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-xs">
+                  {editingDept ? 'Simpan Perubahan' : 'Tambah Departemen'}
                 </button>
               </div>
             </form>
@@ -669,7 +927,7 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
               <Trash2 className="w-6 h-6" />
             </div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white">
-              Hapus {deleteConfirm.type === 'kategori' ? 'Kategori' : deleteConfirm.type === 'satuan' ? 'Satuan' : 'Pemasok'}?
+              Hapus {deleteConfirm.type === 'kategori' ? 'Kategori' : deleteConfirm.type === 'satuan' ? 'Satuan' : deleteConfirm.type === 'departemen' ? 'Departemen' : 'Pemasok'}?
             </h3>
             <p className="text-xs text-slate-500 mt-2">
               Apakah Anda yakin ingin menghapus data <strong className="text-slate-800 dark:text-slate-200">"{deleteConfirm.title}"</strong> dari sistem?
@@ -678,14 +936,14 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
               <button
                 type="button"
                 onClick={() => setDeleteConfirm(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 rounded-lg"
+                className="px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
               >
                 Batal
               </button>
               <button
                 type="button"
                 onClick={handleExecuteDelete}
-                className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg flex items-center gap-1.5"
+                className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg flex items-center gap-1.5 shadow-xs"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Ya, Hapus</span>

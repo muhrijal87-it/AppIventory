@@ -13,7 +13,7 @@ import {
 import { mysql } from '../../db/mysqlEngine';
 
 export const SQLQueryRunnerView: React.FC = () => {
-  const [query, setQuery] = useState<string>('SELECT id, kode_barang, nama_barang, stok, stok_min, harga_beli FROM tbl_barang WHERE stok <= stok_min;');
+  const [query, setQuery] = useState<string>('SELECT id, kode_barang, nama_barang, stok, stok_min, lokasi_rak FROM tbl_barang WHERE stok <= stok_min;');
   const [result, setResult] = useState<{
     success: boolean;
     columns: string[];
@@ -42,7 +42,7 @@ export const SQLQueryRunnerView: React.FC = () => {
     },
     {
       title: 'Barang dengan Kondisi Baik',
-      sql: "SELECT kode_barang, nama_barang, stok, harga_beli, kondisi FROM tbl_barang WHERE kondisi = 'Baik' LIMIT 10;",
+      sql: "SELECT kode_barang, nama_barang, stok, lokasi_rak, kondisi FROM tbl_barang WHERE kondisi = 'Baik' LIMIT 10;",
     },
     {
       title: 'Cek Versi MySQL Server',

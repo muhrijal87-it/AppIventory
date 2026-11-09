@@ -11,10 +11,12 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useInventory } from '../../context/InventoryContext';
 import { PillNotification } from '../common/PillNotification';
 
 export const LoginView: React.FC = () => {
   const { login } = useAuth();
+  const { appSettings } = useInventory();
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('password123');
   const [rememberMe, setRememberMe] = useState(true);
@@ -61,17 +63,21 @@ export const LoginView: React.FC = () => {
       <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-8 relative z-10 text-slate-100">
         {/* Brand Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex w-14 h-14 rounded-2xl bg-gradient-to-tr from-red-600 to-orange-500 items-center justify-center text-white shadow-lg mb-3">
-            <Flame className="w-8 h-8 fill-current" />
+          <div className="inline-flex w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md p-1.5 items-center justify-center text-white shadow-xl border border-slate-700/60 mb-3 overflow-hidden">
+            {appSettings.logo_url ? (
+              <img src={appSettings.logo_url} alt="Logo" className="w-full h-full object-contain rounded-xl" />
+            ) : (
+              <Flame className="w-8 h-8 fill-current" />
+            )}
           </div>
-          <div className="flex items-center justify-center gap-1.5">
-            <h1 className="text-xl font-bold tracking-tight text-white">CI-Inventaris</h1>
+          <div className="flex items-center justify-center gap-1.5 flex-wrap">
+            <h1 className="text-xl font-bold tracking-tight text-white">{appSettings.nama_aplikasi || 'CI-Inventaris'}</h1>
             <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-red-950 text-red-400 font-semibold border border-red-800">
-              CI 4.5.3
+              {appSettings.versi_aplikasi || 'CI 4.5.3'}
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Sistem Informasi Manajemen Inventaris Gudang &amp; Relasional MySQL
+            {appSettings.tagline || 'Sistem Informasi Manajemen Inventaris Gudang & Relasional MySQL'}
           </p>
         </div>
 

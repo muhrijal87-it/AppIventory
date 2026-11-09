@@ -23,12 +23,14 @@ import {
   MutasiStok,
   ActivityLog,
   DatabaseQueryLog,
-  TableInfo
+  TableInfo,
+  AppSettings
 } from '../types';
 
 export interface DatabaseState {
   version: string;
   lastUpdated: string;
+  app_settings?: AppSettings;
   users: User[];
   kategori: Kategori[];
   satuan: Satuan[];
@@ -44,9 +46,20 @@ export interface DatabaseState {
 const STORAGE_KEY = 'ci_inventaris_mysql_db';
 const QUERY_LOG_KEY = 'ci_profiler_query_logs';
 
+export const DEFAULT_APP_SETTINGS: AppSettings = {
+  nama_aplikasi: 'CI-Inventaris',
+  nama_pendek: 'InvSystem',
+  tagline: 'Sistem Informasi Manajemen Inventaris Gudang & Relasional MySQL',
+  logo_url: '/assets/inventory_logo_v2.jpg',
+  versi_aplikasi: 'CI 4.5.3',
+  updated_at: '2026-10-30 08:00:00',
+};
+
 export const INITIAL_SEED_DATA: DatabaseState = {
   version: '8.0.35-CodeIgniter4',
   lastUpdated: '2026-10-30T06:00:00.000Z',
+  app_settings: DEFAULT_APP_SETTINGS,
+
   users: [
     {
       id: 1,
@@ -200,8 +213,6 @@ export const INITIAL_SEED_DATA: DatabaseState = {
       satuan_id: 1,
       stok: 56,
       stok_min: 5,
-      harga_beli: 4800000,
-      harga_jual: 5600000,
       lokasi_rak: 'Rak A-1 (Lantai 2 - Elektronik)',
       kondisi: 'Baik',
       model: 'MD788G DMR Digital Mobile Radio',
@@ -219,8 +230,6 @@ export const INITIAL_SEED_DATA: DatabaseState = {
       satuan_id: 1,
       stok: 12,
       stok_min: 5,
-      harga_beli: 1750000,
-      harga_jual: 2100000,
       lokasi_rak: 'Rak A-2 (Lantai 2)',
       kondisi: 'Baik',
       model: 'Dell S2421HN IPS Full HD 75Hz',
@@ -238,8 +247,6 @@ export const INITIAL_SEED_DATA: DatabaseState = {
       satuan_id: 2,
       stok: 24,
       stok_min: 10,
-      harga_beli: 165000,
-      harga_jual: 215000,
       lokasi_rak: 'Rak A-3 (Lantai 2)',
       kondisi: 'Baik',
       deskripsi: 'Koneksi 2.4GHz USB Dongle, Jangkauan 10m, Baterai AA awet 18 bulan',
@@ -255,8 +262,6 @@ export const INITIAL_SEED_DATA: DatabaseState = {
       satuan_id: 5,
       stok: 4, // Low stock alert! (min 10)
       stok_min: 10,
-      harga_beli: 46000,
-      harga_jual: 55000,
       lokasi_rak: 'Rak B-1 (Gudang ATK)',
       kondisi: 'Baik',
       deskripsi: 'Kertas HVS putih bersih 80gsm, 500 lembar per rim, ideal fotokopi & cetak laporan',
@@ -272,8 +277,6 @@ export const INITIAL_SEED_DATA: DatabaseState = {
       satuan_id: 3,
       stok: 2, // Critical low stock alert! (min 5)
       stok_min: 5,
-      harga_beli: 275000,
-      harga_jual: 320000,
       lokasi_rak: 'Rak B-2 (Gudang ATK)',
       kondisi: 'Baik',
       deskripsi: 'Kertas formulir faktur 3 ply (Putih-Merah-Kuning) 9.5 x 11 inch',
@@ -289,8 +292,6 @@ export const INITIAL_SEED_DATA: DatabaseState = {
       satuan_id: 2,
       stok: 16,
       stok_min: 5,
-      harga_beli: 82000,
-      harga_jual: 98000,
       lokasi_rak: 'Rak B-3 (Gudang ATK)',
       kondisi: 'Baik',
       deskripsi: 'Tinta original Epson L3110, L3150, L1110, L3210 volume 65ml',
@@ -306,8 +307,6 @@ export const INITIAL_SEED_DATA: DatabaseState = {
       satuan_id: 1,
       stok: 6,
       stok_min: 2,
-      harga_beli: 620000,
-      harga_jual: 750000,
       lokasi_rak: 'Rak C-1 (Peralatan Teknisi)',
       kondisi: 'Baik',
       deskripsi: 'Daya 550W, kapasitas bor beton 13mm, putaran bolak balik variabel kecepatan',
@@ -323,8 +322,6 @@ export const INITIAL_SEED_DATA: DatabaseState = {
       satuan_id: 7,
       stok: 14,
       stok_min: 5,
-      harga_beli: 75000,
-      harga_jual: 95000,
       lokasi_rak: 'Rak C-2 (Peralatan Teknisi)',
       kondisi: 'Baik',
       deskripsi: 'Material Chrome Vanadium Steel, magnetik, box portable serbaguna',
@@ -340,8 +337,6 @@ export const INITIAL_SEED_DATA: DatabaseState = {
       satuan_id: 6,
       stok: 3,
       stok_min: 2,
-      harga_beli: 1850000,
-      harga_jual: 2150000,
       lokasi_rak: 'Rak D-1 (Komponen & Kabel)',
       kondisi: 'Baik',
       deskripsi: 'Roll 1000ft (305m), speed Gigabit 1000Mbps, tembaga murni 23AWG',
@@ -357,8 +352,6 @@ export const INITIAL_SEED_DATA: DatabaseState = {
       satuan_id: 6,
       stok: 48,
       stok_min: 20,
-      harga_beli: 11500,
-      harga_jual: 14500,
       lokasi_rak: 'Rak E-1 (Kemasan & Logistik)',
       kondisi: 'Baik',
       deskripsi: 'Daya rekat kuat opp tape 45 micron, tidak mudah sobek, isi 72 roll/dus',
@@ -374,8 +367,6 @@ export const INITIAL_SEED_DATA: DatabaseState = {
       satuan_id: 2,
       stok: 120,
       stok_min: 50,
-      harga_beli: 14000,
-      harga_jual: 18000,
       lokasi_rak: 'Pallet P-2 (Gudang Bawah)',
       kondisi: 'Baik',
       deskripsi: 'Tebal 7mm K150/M125x3/K150 B/C Flute, menahan beban hingga 30kg',
@@ -391,8 +382,6 @@ export const INITIAL_SEED_DATA: DatabaseState = {
       satuan_id: 2,
       stok: 9,
       stok_min: 4,
-      harga_beli: 520000,
-      harga_jual: 620000,
       lokasi_rak: 'Rak D-2 (Komponen)',
       kondisi: 'Baik',
       deskripsi: 'Read up to 3500MB/s, Write up to 2100MB/s, Garansi distributor 3 tahun',
@@ -633,6 +622,18 @@ export const INITIAL_SEED_DATA: DatabaseState = {
 // Database schema specifications
 export const TABLE_DEFINITIONS: TableInfo[] = [
   {
+    name: 'tbl_app_settings',
+    columns: [
+      { name: 'nama_aplikasi', type: 'VARCHAR(100)' },
+      { name: 'nama_pendek', type: 'VARCHAR(50)' },
+      { name: 'tagline', type: 'VARCHAR(255)' },
+      { name: 'logo_url', type: 'LONGTEXT' },
+      { name: 'versi_aplikasi', type: 'VARCHAR(30)' },
+      { name: 'updated_at', type: 'DATETIME' },
+    ],
+    rowCount: 1,
+  },
+  {
     name: 'tbl_users',
     columns: [
       { name: 'id', type: 'INT(11)', key: 'PRI', extra: 'auto_increment' },
@@ -700,8 +701,6 @@ export const TABLE_DEFINITIONS: TableInfo[] = [
       { name: 'satuan_id', type: 'INT(11)', key: 'MUL' },
       { name: 'stok', type: 'INT(11)' },
       { name: 'stok_min', type: 'INT(11)' },
-      { name: 'harga_beli', type: 'DECIMAL(15,2)' },
-      { name: 'harga_jual', type: 'DECIMAL(15,2)' },
       { name: 'lokasi_rak', type: 'VARCHAR(100)' },
       { name: 'kondisi', type: "ENUM('Baik','Perbaikan','Rusak')" },
       { name: 'deskripsi', type: 'TEXT' },
@@ -862,6 +861,11 @@ class MySQLEngine {
             };
           });
         }
+        if (!parsed.app_settings) {
+          parsed.app_settings = { ...DEFAULT_APP_SETTINGS };
+        } else {
+          parsed.app_settings = { ...DEFAULT_APP_SETTINGS, ...parsed.app_settings };
+        }
         if (!parsed.departemen || !Array.isArray(parsed.departemen) || parsed.departemen.length === 0) {
           parsed.departemen = JSON.parse(JSON.stringify(INITIAL_SEED_DATA.departemen));
         }
@@ -973,6 +977,18 @@ class MySQLEngine {
     sql += `START TRANSACTION;\n`;
     sql += `SET time_zone = "+07:00";\n\n`;
 
+    // Dump app_settings
+    if (this.state.app_settings) {
+      sql += this.tableToSQL('tbl_app_settings', [this.state.app_settings], [
+        'nama_aplikasi VARCHAR(100) NOT NULL',
+        'nama_pendek VARCHAR(50) NOT NULL',
+        'tagline VARCHAR(255) NULL',
+        'logo_url LONGTEXT NULL',
+        'versi_aplikasi VARCHAR(30) NULL',
+        'updated_at DATETIME NULL',
+      ]);
+    }
+
     // Dump users
     sql += this.tableToSQL('tbl_users', this.state.users, [
       'id INT(11) AUTO_INCREMENT PRIMARY KEY',
@@ -1030,8 +1046,6 @@ class MySQLEngine {
       'satuan_id INT(11) NOT NULL',
       'stok INT(11) NOT NULL DEFAULT 0',
       'stok_min INT(11) NOT NULL DEFAULT 5',
-      'harga_beli DECIMAL(15,2) NOT NULL DEFAULT 0.00',
-      'harga_jual DECIMAL(15,2) NOT NULL DEFAULT 0.00',
       'lokasi_rak VARCHAR(100) NULL',
       "kondisi ENUM('Baik','Perbaikan','Rusak') NOT NULL DEFAULT 'Baik'",
       'deskripsi TEXT NULL',
@@ -1231,8 +1245,6 @@ class MySQLEngine {
                 id: Number(b.id) || 1,
                 stok: Number(b.stok) || 0,
                 stok_min: Number(b.stok_min) || 5,
-                harga_beli: Number(b.harga_beli) || 0,
-                harga_jual: Number(b.harga_jual) || 0,
                 model: b.model || '',
                 serial_number: b.serial_number || '',
               }));
@@ -1279,6 +1291,8 @@ class MySQLEngine {
 
       // 2. ATTEMPT ROBUST SQL DUMP RESTORE
       const tableMap: { [key: string]: string } = {
+        tbl_app_settings: 'app_settings',
+        app_settings: 'app_settings',
         tbl_users: 'users',
         users: 'users',
         tbl_kategori: 'kategori',
@@ -1302,6 +1316,7 @@ class MySQLEngine {
       };
 
       const extractedTables: { [stateKey: string]: any[] } = {
+        app_settings: [],
         users: [],
         kategori: [],
         satuan: [],
@@ -1316,12 +1331,13 @@ class MySQLEngine {
 
       // Table default columns ordered for dumps without explicit column lists
       const defaultCols: { [key: string]: string[] } = {
+        app_settings: ['nama_aplikasi', 'nama_pendek', 'tagline', 'logo_url', 'versi_aplikasi', 'updated_at'],
         users: ['id', 'username', 'nama_lengkap', 'email', 'role', 'is_active', 'created_at', 'last_login'],
         kategori: ['id', 'kode_kategori', 'nama_kategori', 'deskripsi'],
         satuan: ['id', 'kode_satuan', 'nama_satuan'],
         departemen: ['id', 'kode_departemen', 'nama_departemen', 'penanggung_jawab', 'lokasi_gedung', 'keterangan'],
         supplier: ['id', 'kode_supplier', 'nama_supplier', 'kontak_pic', 'no_telepon', 'email', 'alamat'],
-        barang: ['id', 'kode_barang', 'nama_barang', 'kategori_id', 'satuan_id', 'stok', 'stok_min', 'harga_beli', 'harga_jual', 'lokasi_rak', 'kondisi', 'deskripsi', 'barcode', 'model', 'serial_number', 'foto', 'created_at', 'updated_at'],
+        barang: ['id', 'kode_barang', 'nama_barang', 'kategori_id', 'satuan_id', 'stok', 'stok_min', 'lokasi_rak', 'kondisi', 'deskripsi', 'barcode', 'model', 'serial_number', 'foto', 'created_at', 'updated_at'],
         transaksi_masuk: ['id', 'no_faktur', 'tanggal', 'supplier_id', 'barang_id', 'jumlah', 'harga_satuan', 'total_harga', 'catatan', 'petugas_id', 'foto_nota', 'created_at'],
         transaksi_keluar: ['id', 'no_transaksi', 'tanggal', 'penerima', 'departemen', 'barang_id', 'jumlah', 'model', 'serial_number', 'keperluan', 'petugas_id', 'foto_bukti', 'created_at'],
         mutasi_stok: ['id', 'tanggal', 'barang_id', 'jenis', 'jumlah', 'stok_sebelum', 'stok_sesudah', 'referensi', 'keterangan', 'petugas_id', 'asal', 'tujuan'],
@@ -1389,8 +1405,6 @@ class MySQLEngine {
                 if (rowObj.id !== undefined) rowObj.id = Number(rowObj.id) || Date.now();
                 if (rowObj.stok !== undefined) rowObj.stok = Number(rowObj.stok) || 0;
                 if (rowObj.stok_min !== undefined) rowObj.stok_min = Number(rowObj.stok_min) || 5;
-                if (rowObj.harga_beli !== undefined) rowObj.harga_beli = Number(rowObj.harga_beli) || 0;
-                if (rowObj.harga_jual !== undefined) rowObj.harga_jual = Number(rowObj.harga_jual) || 0;
                 if (rowObj.jumlah !== undefined) rowObj.jumlah = Number(rowObj.jumlah) || 1;
                 if (rowObj.kategori_id !== undefined) rowObj.kategori_id = Number(rowObj.kategori_id) || 1;
                 if (rowObj.satuan_id !== undefined) rowObj.satuan_id = Number(rowObj.satuan_id) || 1;
@@ -1424,6 +1438,7 @@ class MySQLEngine {
         extractedTables.transaksi_keluar.length;
 
       if (totalExtracted > 0) {
+        if (extractedTables.app_settings.length > 0) this.state.app_settings = extractedTables.app_settings[0];
         if (extractedTables.users.length > 0) this.state.users = extractedTables.users;
         if (extractedTables.kategori.length > 0) this.state.kategori = extractedTables.kategori;
         if (extractedTables.satuan.length > 0) this.state.satuan = extractedTables.satuan;

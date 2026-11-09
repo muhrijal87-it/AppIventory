@@ -52,8 +52,6 @@ export interface Barang {
   satuan_id: number;
   stok: number;
   stok_min: number;
-  harga_beli: number;
-  harga_jual: number;
   lokasi_rak: string;
   kondisi: 'Baik' | 'Perbaikan' | 'Rusak';
   deskripsi: string;
@@ -141,3 +139,13 @@ export interface TableInfo {
   }[];
   rowCount: number;
 }
+
+export interface AppSettings {
+  nama_aplikasi: string;
+  nama_pendek: string;
+  tagline: string;
+  logo_url: string;
+  versi_aplikasi?: string;
+  updated_at?: string;
+}
+

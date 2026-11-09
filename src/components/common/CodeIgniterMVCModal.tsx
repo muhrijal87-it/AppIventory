@@ -165,8 +165,6 @@ class BarangModel extends Model
         'satuan_id',
         'stok',
         'stok_min',
-        'harga_beli',
-        'harga_jual',
         'lokasi_rak',
         'kondisi',
         'deskripsi',
@@ -194,11 +192,11 @@ class BarangModel extends Model
     }
 
     /**
-     * Hitung total valuasi aset barang (stok * harga_beli)
+     * Hitung total kuantitas stok fisik barang
      */
-    public function getTotalAssetValue()
+    public function getTotalStockCount()
     {
-        $query = $this->db->query("SELECT SUM(stok * harga_beli) as total_aset, SUM(stok) as total_fisik FROM tbl_barang");
+        $query = $this->db->query("SELECT SUM(stok) as total_fisik FROM tbl_barang");
         return $query->getRow();
     }
 }`,

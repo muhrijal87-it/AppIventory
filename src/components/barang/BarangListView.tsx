@@ -117,8 +117,6 @@ export const BarangListView: React.FC = () => {
     satuan_id: 1,
     stok: 10,
     stok_min: 5,
-    harga_beli: 0,
-    harga_jual: 0,
     lokasi_rak: 'Rak A-1',
     kondisi: 'Baik' as 'Baik' | 'Perbaikan' | 'Rusak',
     deskripsi: '',
@@ -133,7 +131,7 @@ export const BarangListView: React.FC = () => {
     const matchesSearch =
       item.nama_barang.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.kode_barang.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.lokasi_rak.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.lokasi_rak || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (item.model && item.model.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (item.serial_number && item.serial_number.toLowerCase().includes(searchTerm.toLowerCase()));
 
@@ -164,8 +162,6 @@ export const BarangListView: React.FC = () => {
       satuan_id: satuan[0]?.id || 1,
       stok: 10,
       stok_min: 5,
-      harga_beli: 0,
-      harga_jual: 0,
       lokasi_rak: 'Rak A-1 (Gudang Utama)',
       kondisi: 'Baik',
       deskripsi: '',
@@ -187,12 +183,10 @@ export const BarangListView: React.FC = () => {
       satuan_id: item.satuan_id,
       stok: item.stok,
       stok_min: item.stok_min,
-      harga_beli: 0,
-      harga_jual: 0,
-      lokasi_rak: item.lokasi_rak,
+      lokasi_rak: item.lokasi_rak || '',
       kondisi: item.kondisi,
-      deskripsi: item.deskripsi,
-      barcode: item.barcode,
+      deskripsi: item.deskripsi || '',
+      barcode: item.barcode || '',
       model: item.model || '',
       serial_number: item.serial_number || '',
       foto: item.foto || '',
@@ -258,8 +252,6 @@ export const BarangListView: React.FC = () => {
       satuan_id: Number(formState.satuan_id),
       stok: Number(formState.stok),
       stok_min: Number(formState.stok_min),
-      harga_beli: Number(formState.harga_beli),
-      harga_jual: Number(formState.harga_jual),
       lokasi_rak: formState.lokasi_rak,
       kondisi: formState.kondisi,
       deskripsi: formState.deskripsi,
@@ -279,8 +271,6 @@ export const BarangListView: React.FC = () => {
       satuan_id: Number(formState.satuan_id),
       stok: Number(formState.stok),
       stok_min: Number(formState.stok_min),
-      harga_beli: Number(formState.harga_beli),
-      harga_jual: Number(formState.harga_jual),
       lokasi_rak: formState.lokasi_rak,
       kondisi: formState.kondisi,
       deskripsi: formState.deskripsi,

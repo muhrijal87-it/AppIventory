@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { InventoryProvider } from './context/InventoryContext';
+import { InventoryProvider, useInventory } from './context/InventoryContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { NotificationToastContainer } from './components/notifications/NotificationToastContainer';
 import { NotificationCenterModal } from './components/notifications/NotificationCenterModal';
@@ -22,11 +22,13 @@ import { SQLQueryRunnerView } from './components/database/SQLQueryRunnerView';
 import { UserManagementView } from './components/users/UserManagementView';
 import { ActivityLogView } from './components/users/ActivityLogView';
 import { ReportsView } from './components/reports/ReportsView';
+import { AppSettingsView } from './components/settings/AppSettingsView';
 import { ForbiddenAccessView } from './components/common/ForbiddenAccessView';
 import { Menu } from 'lucide-react';
 
 const MainLayout: React.FC = () => {
-  const { isAuthenticated, can } = useAuth();
+  const { isAuthenticated, can, user } = useAuth();
+  const { appSettings } = useInventory();
   const [currentView, setCurrentView] = useState<string>('dashboard');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMVCModalOpen, setIsMVCModalOpen] = useState(false);
@@ -50,11 +52,16 @@ const MainLayout: React.FC = () => {
         return <PerpindahanBarangView onNavigate={setCurrentView} />;
       case 'mutasi_stok':
         return <MutasiStokView />;
+      case 'master_data':
       case 'master_kategori':
-      case 'master_departemen':
         return <MasterDataView initialTab="kategori" />;
+      case 'master_departemen':
+        return <MasterDataView initialTab="departemen" />;
       case 'master_supplier':
         return <MasterDataView initialTab="supplier" />;
+      case 'master_satuan':
+        return <MasterDataView initialTab="satuan" />;
+      case 'laporan_system':
       case 'laporan_stok':
         return <ReportsView type="stok" />;
       case 'laporan_transaksi':
@@ -81,6 +88,12 @@ const MainLayout: React.FC = () => {
           return <ForbiddenAccessView onBack={() => setCurrentView('dashboard')} />;
         }
         return <ActivityLogView />;
+      case 'app_settings':
+      case 'settings':
+        if (user?.role !== 'admin') {
+          return <ForbiddenAccessView onBack={() => setCurrentView('dashboard')} />;
+        }
+        return <AppSettingsView />;
       default:
         return <DashboardView onNavigate={setCurrentView} onOpenMVCModal={() => setIsMVCModalOpen(true)} />;
     }
@@ -121,8 +134,20 @@ const MainLayout: React.FC = () => {
         />
 
         {/* Viewport Content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 w-full max-w-[1700px] mx-auto pb-20 overflow-y-auto print:p-0 print:m-0 print:max-w-none print:overflow-visible print:w-full">
-          {renderActiveView()}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 w-full max-w-[1700px] mx-auto pb-8 overflow-y-auto print:p-0 print:m-0 print:max-w-none print:overflow-visible print:w-full flex flex-col justify-between">
+          <div className="space-y-6">
+            {renderActiveView()}
+          </div>
+
+          <footer className="mt-12 pt-6 border-t border-slate-200/80 dark:border-slate-800/80 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-400 dark:text-slate-500 font-medium gap-2 print:hidden">
+            <div>
+              © {new Date().getFullYear()} <strong className="text-slate-600 dark:text-slate-400 font-bold">{appSettings.nama_aplikasi}</strong> — {appSettings.tagline}
+            </div>
+            <div className="flex items-center gap-4 text-[10px] font-mono text-slate-400">
+              <span className="px-2 py-0.5 rounded-full bg-slate-200/60 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 font-semibold">{appSettings.versi_aplikasi || 'v4.5.3'}</span>
+              <span>Framework CodeIgniter 4</span>
+            </div>
+          </footer>
         </main>
       </div>
 

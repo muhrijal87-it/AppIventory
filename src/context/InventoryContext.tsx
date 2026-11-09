@@ -8,8 +8,9 @@ import {
   TransaksiMasuk,
   TransaksiKeluar,
   MutasiStok,
+  AppSettings,
 } from '../types';
-import { mysql } from '../db/mysqlEngine';
+import { mysql, DEFAULT_APP_SETTINGS } from '../db/mysqlEngine';
 import { useAuth } from './AuthContext';
 
 interface FlashMessage {
@@ -18,6 +19,8 @@ interface FlashMessage {
 }
 
 interface InventoryContextType {
+  appSettings: AppSettings;
+  updateAppSettings: (newSettings: Partial<AppSettings>) => boolean;
   barang: Barang[];
   kategori: Kategori[];
   satuan: Satuan[];
@@ -135,7 +138,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     mysql.setState(state);
     reloadState();
 
-    mysql.logQuery(`INSERT INTO tbl_barang (kode_barang, nama_barang, stok, stok_min, harga_beli, ...) VALUES ('${newBarang.kode_barang}', '${newBarang.nama_barang}', ${newBarang.stok}, ...)`, performance.now() - t0, 1);
+    mysql.logQuery(`INSERT INTO tbl_barang (kode_barang, nama_barang, stok, stok_min, lokasi_rak, ...) VALUES ('${newBarang.kode_barang}', '${newBarang.nama_barang}', ${newBarang.stok}, ...)`, performance.now() - t0, 1);
     logActivity('INSERT_BARANG', 'INVENTARIS', `Menambahkan barang baru: ${newBarang.kode_barang} - ${newBarang.nama_barang}`);
     setFlash('success', `Data barang '${newBarang.nama_barang}' berhasil disimpan ke database! (CodeIgniter Model: BarangModel::save)`);
     return true;
@@ -741,10 +744,38 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return true;
   };
 
+  // APP SETTINGS CRUD (EDIT LOGO & APPLICATION NAME)
+  const updateAppSettings = (newSettings: Partial<AppSettings>): boolean => {
+    const t0 = performance.now();
+    const state = mysql.getState();
+    const current = state.app_settings || DEFAULT_APP_SETTINGS;
+    const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
+
+    const updated: AppSettings = {
+      ...current,
+      ...newSettings,
+      updated_at: now,
+    };
+
+    state.app_settings = updated;
+    mysql.setState(state);
+    reloadState();
+
+    mysql.logQuery(
+      `UPDATE tbl_app_settings SET nama_aplikasi = '${updated.nama_aplikasi}', nama_pendek = '${updated.nama_pendek}', tagline = '${updated.tagline}', logo_url = '${updated.logo_url ? 'BLOB/DATA_URL' : ''}' WHERE id = 1`,
+      performance.now() - t0,
+      1
+    );
+
+    logActivity('UPDATE_APP_SETTINGS', 'PENGATURAN', `Memperbarui konfigurasi nama aplikasi (${updated.nama_aplikasi}) & logo aplikasi`);
+    setFlash('success', 'Pengaturan nama & logo aplikasi berhasil disimpan!');
+    return true;
+  };
+
   // CALCULATE STATS
   const totalJenisBarang = dbState.barang.length;
   const totalStokFisik = dbState.barang.reduce((acc, b) => acc + b.stok, 0);
-  const totalNilaiAset = dbState.barang.reduce((acc, b) => acc + b.stok * b.harga_beli, 0);
+  const totalNilaiAset = 0;
   const barangKritis = dbState.barang.filter((b) => b.stok > 0 && b.stok <= b.stok_min);
   const barangHabis = dbState.barang.filter((b) => b.stok === 0);
   const totalMasukBulanIni = dbState.transaksi_masuk.reduce((acc, t) => acc + t.jumlah, 0);
@@ -755,6 +786,8 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   return (
     <InventoryContext.Provider
       value={{
+        appSettings: dbState.app_settings || DEFAULT_APP_SETTINGS,
+        updateAppSettings,
         barang: dbState.barang,
         kategori: dbState.kategori,
         satuan: dbState.satuan,
