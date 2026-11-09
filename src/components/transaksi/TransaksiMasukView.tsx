@@ -94,6 +94,7 @@ export const TransaksiMasukView: React.FC = () => {
       setValidationError('');
     };
     reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   const handleSubmit = (e: React.FormEvent) => {

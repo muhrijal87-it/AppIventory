@@ -214,6 +214,7 @@ export const PerpindahanBarangView: React.FC<PerpindahanBarangViewProps> = ({ on
       setValidationError('');
     };
     reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   const handleSubmit = (e: React.FormEvent) => {

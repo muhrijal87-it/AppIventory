@@ -268,6 +268,7 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
       setTransferError('');
     };
     reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   const handleSaveTransfer = (e: React.FormEvent) => {

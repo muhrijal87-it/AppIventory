@@ -197,6 +197,7 @@ export const BarangListView: React.FC = () => {
       img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   const handleSubmitAdd = (e: React.FormEvent) => {
