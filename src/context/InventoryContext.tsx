@@ -36,6 +36,8 @@ interface InventoryContextType {
   // Transactions & Transfers
   addTransaksiMasuk: (trx: Omit<TransaksiMasuk, 'id' | 'created_at'>) => boolean;
   addTransaksiKeluar: (trx: Omit<TransaksiKeluar, 'id' | 'created_at'>) => { success: boolean; message: string };
+  updateTransaksiKeluar: (id: number, item: Partial<TransaksiKeluar>) => boolean;
+  recallTransaksiKeluar: (id: number, alasan: string, kondisiBaru?: 'Baik' | 'Perbaikan' | 'Rusak') => { success: boolean; message: string };
   transferBarangRak: (barangId: number, rakTujuan: string, jumlah: number, catatan: string) => { success: boolean; message: string };
   simulateRealtimeMovement: () => { success: boolean; message: string };
   // Master data
@@ -324,6 +326,104 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       );
     }
     return { success: true, message: 'Transaksi berhasil disimpan!' };
+  };
+
+  const updateTransaksiKeluar = (id: number, itemData: Partial<TransaksiKeluar>): boolean => {
+    const t0 = performance.now();
+    const state = mysql.getState();
+    const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
+
+    state.transaksi_keluar = state.transaksi_keluar.map((t) => 
+      t.id === id ? { ...t, ...itemData } : t
+    );
+    
+    mysql.setState(state);
+    reloadState();
+
+    mysql.logQuery(`UPDATE tbl_transaksi_keluar SET penerima = ... WHERE id = ${id}`, performance.now() - t0, 1);
+    logActivity('UPDATE_TRX_KELUAR', 'TRANSAKSI', `Memperbarui rincian transaksi keluar ID #${id}`);
+    return true;
+  };
+
+  const recallTransaksiKeluar = (
+    id: number, 
+    alasan: string, 
+    kondisiBaru?: 'Baik' | 'Perbaikan' | 'Rusak'
+  ): { success: boolean; message: string } => {
+    const t0 = performance.now();
+    const state = mysql.getState();
+    const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
+
+    const trxIndex = state.transaksi_keluar.findIndex((t) => t.id === id);
+    if (trxIndex === -1) {
+      return { success: false, message: 'Data transaksi tidak ditemukan!' };
+    }
+
+    const trx = state.transaksi_keluar[trxIndex];
+    const targetItem = state.barang.find((b) => b.id === trx.barang_id);
+    if (!targetItem) {
+      return { success: false, message: 'Barang terkait sudah dihapus dari database!' };
+    }
+
+    const isTransfer = trx.no_transaksi.startsWith('TRF-');
+    const stokSebelum = targetItem.stok;
+    
+    // ATURAN: Jika bukan transfer (berarti barang benar-benar keluar), kembalikan stok.
+    // Jika transfer, sisa stok gudang tidak pernah berkurang, jadi tidak perlu ditambah.
+    const stokSesudah = isTransfer ? targetItem.stok : targetItem.stok + trx.jumlah;
+    
+    if (!isTransfer) {
+      targetItem.stok = stokSesudah;
+    }
+    
+    // Update physical condition if provided during recall
+    if (kondisiBaru) {
+      targetItem.kondisi = kondisiBaru;
+    }
+    
+    targetItem.updated_at = now;
+
+    // Record mutation for the Recall
+    const mutasiId = state.mutasi_stok.length > 0 ? Math.max(...state.mutasi_stok.map((m) => m.id)) + 1 : 1;
+    state.mutasi_stok.unshift({
+      id: mutasiId,
+      tanggal: now,
+      barang_id: targetItem.id,
+      jenis: 'Masuk',
+      jumlah: trx.jumlah,
+      stok_sebelum: stokSebelum,
+      stok_sesudah: stokSesudah,
+      referensi: `RECALL-${trx.no_transaksi}`,
+      keterangan: `Penarikan kembali (Recall) barang dari ${trx.penerima}. Alasan: ${alasan || 'Tidak disebutkan'}`,
+      petugas_id: user ? user.id : 1,
+      asal: `${trx.penerima} (${trx.departemen})`,
+      tujuan: targetItem.lokasi_rak || 'Gudang Utama',
+    });
+
+    // Remove the transaction record
+    state.transaksi_keluar.splice(trxIndex, 1);
+
+    mysql.setState(state);
+    reloadState();
+
+    mysql.logQuery(
+      `START TRANSACTION; DELETE FROM tbl_transaksi_keluar WHERE id = ${id}; ${!isTransfer ? `UPDATE tbl_barang SET stok = stok + ${trx.jumlah} WHERE id = ${targetItem.id};` : ''} COMMIT;`,
+      performance.now() - t0,
+      2
+    );
+
+    logActivity(
+      'RECALL_BARANG',
+      'TRANSAKSI',
+      `Tarik kembali barang ${trx.no_transaksi} (${trx.jumlah} unit ${targetItem.nama_barang} dari ${trx.penerima})`
+    );
+
+    setFlash(
+      'warning',
+      `Berhasil menarik kembali barang ${trx.no_transaksi}. Stok ${targetItem.nama_barang} kini: ${stokSesudah}.`
+    );
+
+    return { success: true, message: 'Barang berhasil ditarik kembali ke gudang.' };
   };
 
   // INTERNAL RACK TRANSFER (RELOCATION)
@@ -671,6 +771,8 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         deleteBarang,
         addTransaksiMasuk,
         addTransaksiKeluar,
+        updateTransaksiKeluar,
+        recallTransaksiKeluar,
         transferBarangRak,
         simulateRealtimeMovement,
         addKategori,

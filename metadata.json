@@ -1,6 +1,6 @@
 {
-  "name": "Remix CI-Inventaris - Sistem Inventaris Barang CodeIgniter \u0026 MySQL",
-  "description": "Aplikasi manajemen inventaris barang dengan struktur \u0026 tampilan khas CodeIgniter, database MySQL dengan fitur backup \u0026 reset, serta sistem autentikasi pengguna berjenjang.",
+  "name": "InvSystem - Sistem Manajemen Inventaris \u0026 Logistik Gudang",
+  "description": "Aplikasi manajemen inventaris barang terintegrasi dengan fitur pelacakan real-time, manajemen stok, dan laporan otomatis.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

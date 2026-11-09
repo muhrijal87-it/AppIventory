@@ -7,18 +7,16 @@ import {
   Printer,
   X,
   AlertCircle,
-  UserCheck,
   Image as ImageIcon,
-  Upload,
   Trash2,
   Eye,
   Camera,
   CheckCircle2,
   Barcode,
   ArrowRightLeft,
-  ArrowRight,
   Package,
-  Layers,
+  RotateCcw,
+  Undo2,
 } from 'lucide-react';
 import { TransaksiKeluar } from '../../types';
 import { useInventory } from '../../context/InventoryContext';
@@ -28,8 +26,29 @@ interface TransaksiKeluarViewProps {
   onNavigate?: (view: string) => void;
 }
 
+// --- Reusable Form Components ---
+const FormLabel: React.FC<{ children: React.ReactNode; required?: boolean }> = ({ children, required }) => (
+  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+    {children} {required && <span className="text-red-500">*</span>}
+  </label>
+);
+
+const FormInput = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
+  <input
+    {...props}
+    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all outline-hidden"
+  />
+);
+
+const FormSelect = (props: React.SelectHTMLAttributes<HTMLSelectElement>) => (
+  <select
+    {...props}
+    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all outline-hidden"
+  />
+);
+
 export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavigate }) => {
-  const { transaksiKeluar, barang, departemen: masterDepartemen, addTransaksiKeluar } = useInventory();
+  const { transaksiKeluar, barang, departemen: masterDepartemen, addTransaksiKeluar, updateTransaksiKeluar, recallTransaksiKeluar } = useInventory();
   const { user, users, can } = useAuth();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -42,12 +61,8 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
   const [noTransaksi, setNoTransaksi] = useState('');
   const [tanggal, setTanggal] = useState(new Date().toISOString().slice(0, 10));
   const [penerima, setPenerima] = useState('');
-  const [departemen, setDepartemen] = useState(
-    masterDepartemen && masterDepartemen.length > 0
-      ? masterDepartemen[0].nama_departemen
-      : 'Divisi Pengembangan TI'
-  );
-  const [barangId, setBarangId] = useState<number>(barang[0]?.id || 1);
+  const [departemen, setDepartemen] = useState('');
+  const [barangId, setBarangId] = useState<number>(1);
   const [jumlah, setJumlah] = useState<number>(1);
   const [model, setModel] = useState('');
   const [serialNumber, setSerialNumber] = useState('');
@@ -66,6 +81,12 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
   const [transferFotoBukti, setTransferFotoBukti] = useState<string>('');
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [transferError, setTransferError] = useState('');
+
+  // Recall (Tarik Kembali) States
+  const [recallModalItem, setRecallModalItem] = useState<TransaksiKeluar | null>(null);
+  const [recallReason, setRecallReason] = useState('');
+  const [recallCondition, setRecallCondition] = useState<'Baik' | 'Perbaikan' | 'Rusak'>('Baik');
+  const [recallError, setRecallError] = useState('');
 
   const departemenList =
     masterDepartemen && masterDepartemen.length > 0
@@ -164,33 +185,6 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
     }
   };
 
-  const handleFetchSerial = () => {
-    const targetItem = barang.find((b) => b.id === Number(barangId));
-    if (targetItem) {
-      if (targetItem.model) setModel(targetItem.model);
-      
-      const allItemSNs = targetItem.serial_number
-        ? targetItem.serial_number.split(/[,;\n]+/).map((s) => s.trim()).filter(Boolean)
-        : [];
-
-      // Find first registered SN that has NOT been issued yet and is NOT already typed
-      const availableSN = allItemSNs.find(
-        (sn) => !issuedSerialsMap[sn.toUpperCase()] && !parsedCurrentSNs.map((s) => s.toUpperCase()).includes(sn.toUpperCase())
-      );
-
-      if (availableSN) {
-        setSerialNumber((prev) => (prev ? `${prev}, ${availableSN}` : availableSN));
-        setValidationError('');
-      } else if (allItemSNs.length > 0) {
-        setValidationError(`Semua Serial Number terdaftar (${allItemSNs.length} unit) untuk barang ini sudah dikeluarkan atau ada di formulir.`);
-      } else {
-        const newSN = `SN-${targetItem.kode_barang}-${Math.floor(10000 + Math.random() * 90000)}`;
-        setSerialNumber((prev) => (prev ? `${prev}, ${newSN}` : newSN));
-        setValidationError('');
-      }
-    }
-  };
-
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -231,6 +225,31 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
     setTransferKeperluan(`Perpindahan serah terima unit dari ${trx.penerima}`);
     setTransferFotoBukti('');
     setTransferError('');
+  };
+
+  const handleFetchTransferSerial = () => {
+    if (!transferModalItem) return;
+
+    const sourceSNs = transferModalItem.serial_number
+      ? transferModalItem.serial_number.split(/[,;\n]+/).map((s) => s.trim()).filter(Boolean)
+      : [];
+
+    const currentSNs = transferSN
+      .split(/[,;\n]+/)
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean);
+
+    // Find first SN from source that is NOT in current input
+    const nextSN = sourceSNs.find((sn) => !currentSNs.includes(sn.toUpperCase()));
+
+    if (nextSN) {
+      setTransferSN((prev) => (prev ? `${prev}, ${nextSN}` : nextSN));
+      setTransferError('');
+    } else if (sourceSNs.length > 0) {
+      setTransferError('Semua Serial Number dari transaksi asal sudah dimasukkan ke formulir.');
+    } else {
+      setTransferError('Transaksi asal tidak memiliki data Serial Number.');
+    }
   };
 
   const handleTransferImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -278,6 +297,12 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
 
     const res = addTransaksiKeluar(newTrx);
     if (res.success) {
+      // Synchronize the original outbound record with the new recipient
+      updateTransaksiKeluar(transferModalItem.id, {
+        penerima: transferPenerimaBaru.trim(),
+        departemen: transferModalItem.departemen || 'Operasional'
+      });
+      
       setTransferModalItem(null);
       setSelectedDO(newTrx);
     } else {
@@ -339,7 +364,28 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
     }
   };
 
+  const handleExecuteRecall = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!recallModalItem) return;
+    if (!recallReason.trim()) {
+      setRecallError('Alasan penarikan barang wajib diisi!');
+      return;
+    }
+
+    const res = recallTransaksiKeluar(recallModalItem.id, recallReason, recallCondition);
+    if (res.success) {
+      setRecallModalItem(null);
+      setRecallReason('');
+      setRecallCondition('Baik');
+    } else {
+      setRecallError(res.message);
+    }
+  };
+
   const filteredTransactions = transaksiKeluar.filter((t) => {
+    // Filter: Only show standard Outbound (OUT-), exclude Transfers (TRF-)
+    if (t.no_transaksi.startsWith('TRF-')) return false;
+
     const itm = barang.find((b) => b.id === t.barang_id);
     const search = searchTerm.toLowerCase();
     return (
@@ -352,27 +398,47 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
     );
   });
 
+  const getLatestRecipient = (originalTrx: TransaksiKeluar) => {
+    if (!originalTrx.serial_number) return { penerima: originalTrx.penerima, departemen: originalTrx.departemen };
+
+    const sns = originalTrx.serial_number
+      .split(/[,;\n]+/)
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean);
+
+    // Find the latest transaction that contains any of these SNs
+    const latest = [...transaksiKeluar]
+      .filter((t) => t.serial_number)
+      .filter((t) => {
+        const tSns = t.serial_number!.split(/[,;\n]+/).map((s) => s.trim().toUpperCase());
+        return sns.some((sn) => tSns.includes(sn));
+      })
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+
+    return latest
+      ? { penerima: latest.penerima, departemen: latest.departemen, isMoved: latest.id !== originalTrx.id }
+      : { penerima: originalTrx.penerima, departemen: originalTrx.departemen, isMoved: false };
+  };
+
   const selectedItemStock = barang.find((b) => b.id === Number(barangId))?.stok || 0;
 
   return (
     <div className="space-y-6">
       {/* Top Banner */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">
-              Transaksi Barang Keluar (Outbound / Distribusi)
-            </h2>
-          </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Pencatatan distribusi barang ke departemen/divisi dengan validasi stok ketat dan lampiran foto bukti penyerahan.
+          <h2 className="text-lg font-black text-slate-900 dark:text-white">
+            Transaksi Barang Keluar
+          </h2>
+          <p className="text-xs text-slate-500 mt-1">
+            Pencatatan distribusi barang ke departemen/divisi dengan validasi stok ketat.
           </p>
         </div>
 
         {can('manage_inventory') && (
           <button
             onClick={handleOpenAdd}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-lg shadow-xs transition-colors shrink-0"
+            className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-orange-600 hover:bg-orange-700 rounded-2xl shadow-lg shadow-orange-600/20 transition-all active:scale-95"
           >
             <Plus className="w-4 h-4" />
             <span>Catat Barang Keluar</span>
@@ -380,43 +446,39 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
         )}
       </div>
 
-      {/* Search Bar */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-xs">
-        <div className="relative max-w-md">
-          <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Cari no transaksi, penerima, atau divisi..."
-            className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-hidden focus:border-orange-500"
-          />
-        </div>
-      </div>
-
       {/* Table Outbound */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-xs">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="relative max-w-md">
+            <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Cari no transaksi, penerima, atau divisi..."
+              className="w-full pl-10 pr-4 py-2.5 text-xs bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-orange-500 transition-all"
+            />
+          </div>
+        </div>
         <div className="overflow-x-auto scrollbar-thin">
           <table className="w-full text-left text-xs min-w-full">
-            <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800">
+            <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 font-bold uppercase tracking-widest text-[10px] border-b border-slate-200 dark:border-slate-800">
               <tr>
-                <th className="px-3.5 py-3 whitespace-nowrap">No. Transaksi</th>
-                <th className="px-3 py-3 whitespace-nowrap">Tanggal</th>
-                <th className="px-3 py-3 whitespace-nowrap">Penerima</th>
-                <th className="px-3.5 py-3 whitespace-nowrap">Barang Dikeluarkan</th>
-                <th className="px-2.5 py-3 text-right whitespace-nowrap">Jumlah</th>
-                <th className="px-2.5 py-3 text-center whitespace-nowrap">Foto Bukti</th>
-                <th className="px-3 py-3 whitespace-nowrap">Keperluan</th>
-                <th className="px-2.5 py-3 whitespace-nowrap">Petugas</th>
-                <th className="px-2.5 py-3 text-center whitespace-nowrap">Cetak</th>
-                <th className="px-3 py-3 text-center whitespace-nowrap">Pindah Barang</th>
+                <th className="px-6 py-4 whitespace-nowrap">No. Transaksi</th>
+                <th className="px-6 py-4 whitespace-nowrap">Tanggal</th>
+                <th className="px-6 py-4 whitespace-nowrap">Penerima</th>
+                <th className="px-6 py-4 whitespace-nowrap">Barang</th>
+                <th className="px-6 py-4 text-right whitespace-nowrap">Jumlah</th>
+                <th className="px-6 py-4 text-center whitespace-nowrap">Foto</th>
+                <th className="px-6 py-4 text-center whitespace-nowrap">Cetak</th>
+                <th className="px-6 py-4 text-center whitespace-nowrap">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="py-10 text-center text-slate-400">
-                    Belum ada rekaman transaksi barang keluar yang cocok.
+                  <td colSpan={8} className="py-10 text-center text-slate-400 italic">
+                    Belum ada rekaman transaksi barang keluar.
                   </td>
                 </tr>
               ) : (
@@ -426,87 +488,96 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
 
                   return (
                     <tr key={trx.id} className="hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors">
-                      <td className="px-3.5 py-2.5 font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                      <td className="px-6 py-4 font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
                         {trx.no_transaksi}
                       </td>
-                      <td className="px-3 py-2.5 text-slate-500 font-mono whitespace-nowrap">
+                      <td className="px-6 py-4 text-slate-500 font-mono whitespace-nowrap">
                         {trx.tanggal}
                       </td>
-                      <td className="px-3 py-2.5 font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                        {trx.penerima}
+                      <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                        {(() => {
+                          const latest = getLatestRecipient(trx);
+                          return (
+                            <div className="flex flex-col">
+                              <span className="flex items-center gap-1.5">
+                                {latest.penerima}
+                                {latest.isMoved && (
+                                  <span className="text-[9px] bg-purple-100 dark:bg-purple-900/60 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded-full font-bold">
+                                    Pindahan
+                                  </span>
+                                )}
+                              </span>
+                              <span className="text-[10px] text-slate-400">
+                                {latest.departemen}
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </td>
-                      <td className="px-3.5 py-2.5">
+                      <td className="px-6 py-4">
                         <div className="font-semibold text-slate-900 dark:text-white whitespace-nowrap">
                           {itm?.nama_barang || `Barang #${trx.barang_id}`}
                         </div>
-                        <div className="text-[11px] text-slate-400 font-mono">
+                        <div className="text-[10px] text-slate-400 font-mono">
                           {itm?.kode_barang}
-                          {trx.model && ` · Model: ${trx.model}`}
+                          {trx.model && ` · ${trx.model}`}
                         </div>
                         {trx.serial_number && (
-                          <div className="text-[10px] text-orange-600 dark:text-orange-400 font-mono font-medium mt-0.5 whitespace-nowrap">
+                          <div className="text-[10px] text-orange-600 dark:text-orange-400 font-mono font-bold mt-0.5 whitespace-nowrap">
                             SN: {trx.serial_number}
                           </div>
                         )}
                       </td>
-                      <td className="px-2.5 py-2.5 text-right font-mono font-bold text-sm whitespace-nowrap">
-                        {trx.no_transaksi.startsWith('TRF-') ? (
-                          <div className="flex flex-col items-end">
-                            <span className="text-purple-600 dark:text-purple-400 font-bold">{trx.jumlah} unit</span>
-                            <span className="text-[10px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800">
-                              Pindah · Stok Tetap
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-orange-600 dark:text-orange-400 font-bold">-{trx.jumlah}</span>
-                        )}
+                      <td className="px-6 py-4 text-right font-black font-mono text-sm whitespace-nowrap">
+                        <span className="text-orange-600 dark:text-orange-400">-{trx.jumlah}</span>
                       </td>
-                      <td className="px-2.5 py-2.5 text-center whitespace-nowrap">
+                      <td className="px-6 py-4 text-center whitespace-nowrap">
                         {trx.foto_bukti ? (
                           <button
                             onClick={() =>
                               setViewingImage({
-                                title: `Foto Bukti Pengeluaran ${trx.no_transaksi}`,
+                                title: `Foto Bukti ${trx.no_transaksi}`,
                                 url: trx.foto_bukti!,
                               })
                             }
-                            className="group relative inline-block p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
-                            title="Klik untuk melihat foto bukti"
+                            className="p-1 rounded bg-slate-100 hover:bg-orange-50 dark:bg-slate-800 dark:hover:bg-orange-950/40"
                           >
-                            <img
-                              src={trx.foto_bukti}
-                              alt="Bukti"
-                              className="w-8 h-8 object-cover rounded border border-slate-200 dark:border-slate-700 shadow-xs group-hover:scale-105 transition-transform"
-                            />
+                            <ImageIcon className="w-4 h-4 text-orange-600" />
                           </button>
                         ) : (
-                          <span className="text-[10px] text-slate-400 italic">Tanpa foto</span>
+                          <span className="text-[10px] text-slate-400 italic">No</span>
                         )}
                       </td>
-                      <td className="px-3 py-2.5 text-slate-500 max-w-[200px] truncate" title={trx.keperluan}>
-                        {trx.keperluan || '-'}
-                      </td>
-                      <td className="px-2.5 py-2.5 text-slate-500 whitespace-nowrap font-mono text-[11px]">
-                        {petugas?.username || 'Staff'}
-                      </td>
-                      <td className="px-2.5 py-2.5 text-center whitespace-nowrap">
+                      <td className="px-6 py-4 text-center whitespace-nowrap">
                         <button
                           onClick={() => setSelectedDO(trx)}
-                          className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors shadow-2xs"
-                          title="Cetak Surat Jalan / Bukti Pengeluaran"
+                          className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
                         >
                           <Printer className="w-4 h-4" />
                         </button>
                       </td>
-                      <td className="px-3 py-2.5 text-center whitespace-nowrap">
-                        <button
-                          onClick={() => handleOpenTransferModal(trx)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-purple-700 bg-purple-50 hover:bg-purple-100 dark:text-purple-300 dark:bg-purple-950/70 dark:hover:bg-purple-900 border border-purple-200 dark:border-purple-800 transition-all shadow-2xs cursor-pointer active:scale-95 whitespace-nowrap"
-                          title="Pindahkan barang ini ke divisi / departemen lain"
-                        >
-                          <ArrowRightLeft className="w-3.5 h-3.5" />
-                          <span>Pindah Barang</span>
-                        </button>
+                      <td className="px-6 py-4 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => handleOpenTransferModal(trx)}
+                            className="p-1.5 rounded-lg text-purple-600 bg-purple-50 hover:bg-purple-100 dark:text-purple-400 dark:bg-purple-950/60 border border-purple-100 dark:border-purple-900 transition-all active:scale-90"
+                            title="Pindah Barang"
+                          >
+                            <ArrowRightLeft className="w-4 h-4" />
+                          </button>
+                          
+                          <button
+                            onClick={() => {
+                              setRecallModalItem(trx);
+                              setRecallReason('');
+                              setRecallError('');
+                            }}
+                            className="p-1.5 rounded-lg text-amber-600 bg-amber-50 hover:bg-amber-100 dark:text-amber-400 dark:bg-amber-950/60 border border-amber-100 dark:border-amber-900 transition-all active:scale-90"
+                            title="Tarik Kembali"
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -517,801 +588,356 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
         </div>
       </div>
 
-      {/* Modal: Input Barang Keluar (with Image Upload) */}
+      {/* Modal: Input Barang Keluar */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl w-full max-w-xl max-h-[92vh] shadow-2xl flex flex-col overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
-              <div className="flex items-center gap-2">
-                <ArrowUpFromLine className="w-5 h-5 text-orange-600" />
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                  Formulir Pengeluaran Barang (Surat Jalan / DO)
-                </h3>
-              </div>
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
-              >
-                <X className="w-4 h-4" />
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-base font-black text-slate-900 dark:text-white">Pengeluaran Barang (DO)</h3>
+              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600 p-1"><X className="w-5 h-5" /></button>
             </div>
 
             {validationError && (
-              <div className="mx-6 mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900 text-xs flex items-center gap-2">
+              <div className="mx-6 mt-4 p-3 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900 text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
                 <span>{validationError}</span>
               </div>
             )}
 
-            {/* Scrollable Form Body */}
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs overflow-y-auto scrollbar-thin flex-1">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto scrollbar-thin flex-1">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    No. Transaksi / DO <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={noTransaksi}
-                    onChange={(e) => setNoTransaksi(e.target.value)}
-                    className="w-full px-3 py-2 font-mono uppercase bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                  />
+                  <FormLabel required>No. Transaksi</FormLabel>
+                  <FormInput type="text" required value={noTransaksi} onChange={(e) => setNoTransaksi(e.target.value)} readOnly className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-mono uppercase" />
                 </div>
-
                 <div>
-                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Tanggal Pengeluaran <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={tanggal}
-                    onChange={(e) => setTanggal(e.target.value)}
-                    className="w-full px-3 py-2 font-mono bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                  />
+                  <FormLabel required>Tanggal</FormLabel>
+                  <FormInput type="date" required value={tanggal} onChange={(e) => setTanggal(e.target.value)} />
                 </div>
               </div>
 
               <div>
-                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Nama Penerima <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={penerima}
-                  onChange={(e) => setPenerima(e.target.value)}
-                  placeholder="Contoh: Bpk. Bambang Sutrisno"
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                />
+                <FormLabel required>Penerima</FormLabel>
+                <FormInput type="text" required value={penerima} onChange={(e) => setPenerima(e.target.value)} placeholder="Nama Penerima / PIC" />
               </div>
 
-              <div>
-                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Pilih Barang yang Dikeluarkan <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={barangId}
-                  onChange={(e) => handleBarangChange(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white font-medium"
-                >
-                  {barang.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.kode_barang} - {b.nama_barang} (Tersedia: {b.stok} unit)
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                 <div>
+                    <FormLabel required>Departemen</FormLabel>
+                    <FormSelect value={departemen} onChange={(e) => setDepartemen(e.target.value)} required>
+                      {departemenList.map(d => <option key={d} value={d}>{d}</option>)}
+                    </FormSelect>
+                 </div>
+                 <div>
+                    <FormLabel required>Barang</FormLabel>
+                    <FormSelect value={barangId} onChange={(e) => handleBarangChange(Number(e.target.value))} required>
+                      {barang.map(b => <option key={b.id} value={b.id}>{b.nama_barang} (Stok: {b.stok})</option>)}
+                    </FormSelect>
+                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Model / Tipe Barang
-                  </label>
-                  <input
-                    type="text"
-                    value={model}
-                    onChange={(e) => setModel(e.target.value)}
-                    placeholder="Contoh: Hytera MD788G / ThinkPad L14"
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                  />
+                  <FormLabel>Model / Tipe</FormLabel>
+                  <FormInput type="text" value={model} onChange={(e) => setModel(e.target.value)} />
                 </div>
-
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block font-medium text-slate-700 dark:text-slate-300">
-                      Serial Number
-                    </label>
-                    <button
-                      type="button"
-                      onClick={handleFetchSerial}
-                      className="text-[11px] font-semibold text-orange-600 hover:text-orange-700 dark:text-orange-400 hover:underline flex items-center gap-1"
-                      title="Ambil data serial number dari master barang"
-                    >
-                      <Barcode className="w-3.5 h-3.5" />
-                      <span>Ambil Serial Number</span>
-                    </button>
-                  </div>
+                  <FormLabel>Serial Number</FormLabel>
                   <div className="relative">
-                    <input
-                      type="text"
-                      value={serialNumber}
-                      onChange={(e) => setSerialNumber(e.target.value)}
-                      placeholder="Contoh: SN-8829104-X, SN-8829105-Y"
-                      className={`w-full pl-3 pr-10 py-2 font-mono bg-slate-50 dark:bg-slate-800 border rounded-lg text-slate-900 dark:text-white ${
-                        internalDuplicateSN || alreadyIssuedSN
-                          ? 'border-red-500 dark:border-red-500 ring-1 ring-red-500'
-                          : 'border-slate-300 dark:border-slate-700'
-                      }`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowQRScanner(true)}
-                      className="absolute right-2 top-2 p-1 rounded-md text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
-                      title="Scan Barcode/QR"
-                    >
-                      <Camera className="w-4 h-4" />
-                    </button>
+                    <FormInput type="text" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} className="w-full pl-4 pr-10 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-mono" />
+                    <button type="button" onClick={() => setShowQRScanner(true)} className="absolute right-3 top-2.5 text-slate-400 hover:text-orange-600"><Camera className="w-4 h-4" /></button>
                   </div>
-
-                  {/* Real-time Inline Warnings for Serial Numbers */}
-                  {internalDuplicateSN && (
-                    <div className="mt-1.5 p-2 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-[11px] text-red-700 dark:text-red-300 flex items-center gap-1.5 font-medium">
-                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-600" />
-                      <span>Input Dobel: Serial Number "{internalDuplicateSN}" ditulis ganda pada formulir ini!</span>
-                    </div>
-                  )}
-
-                  {alreadyIssuedSN && !internalDuplicateSN && (
-                    <div className="mt-1.5 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-[11px] text-amber-800 dark:text-amber-200 flex items-start gap-1.5 font-medium">
-                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-600 mt-0.5" />
-                      <div>
-                        <span className="font-bold">Sudah Pernah Dikeluarkan:</span> Serial Number "{alreadyIssuedSN}" tercatat pada transaksi{' '}
-                        <strong className="font-mono">{issuedSerialsMap[alreadyIssuedSN.toUpperCase()].no_transaksi}</strong> (
-                        {issuedSerialsMap[alreadyIssuedSN.toUpperCase()].penerima} - {issuedSerialsMap[alreadyIssuedSN.toUpperCase()].tanggal}).
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Registered Item Serial Numbers Chips */}
-                  {(() => {
-                    const targetItem = barang.find((b) => b.id === Number(barangId));
-                    const allItemSNs = targetItem?.serial_number
-                      ? targetItem.serial_number.split(/[,;\n]+/).map((s) => s.trim()).filter(Boolean)
-                      : [];
-
-                    if (allItemSNs.length === 0) return null;
-
-                    return (
-                      <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                        <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 block mb-1">
-                          Pilih Serial Number Terdaftar ({allItemSNs.length} Unit):
-                        </span>
-                        <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto scrollbar-thin">
-                          {allItemSNs.map((sn) => {
-                            const isIssued = !!issuedSerialsMap[sn.toUpperCase()];
-                            const isSelected = parsedCurrentSNs.map((s) => s.toUpperCase()).includes(sn.toUpperCase());
-
-                            if (isIssued) {
-                              const prev = issuedSerialsMap[sn.toUpperCase()];
-                              return (
-                                <span
-                                  key={sn}
-                                  className="text-[10px] font-mono px-2 py-0.5 rounded bg-red-50 dark:bg-red-950/30 text-red-500 line-through border border-red-200 dark:border-red-900/60 cursor-not-allowed opacity-75"
-                                  title={`Sudah Dikeluarkan (${prev.no_transaksi} ke ${prev.penerima})`}
-                                >
-                                  {sn} (Dikeluarkan)
-                                </span>
-                              );
-                            }
-
-                            return (
-                              <button
-                                key={sn}
-                                type="button"
-                                onClick={() => {
-                                  if (isSelected) {
-                                    const next = parsedCurrentSNs.filter((s) => s.toUpperCase() !== sn.toUpperCase());
-                                    setSerialNumber(next.join(', '));
-                                  } else {
-                                    setSerialNumber((prev) => (prev ? `${prev}, ${sn}` : sn));
-                                  }
-                                  setValidationError('');
-                                }}
-                                className={`text-[10px] font-mono px-2 py-0.5 rounded transition-all flex items-center gap-1 cursor-pointer ${
-                                  isSelected
-                                    ? 'bg-orange-600 text-white font-bold shadow-2xs'
-                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-orange-50 dark:hover:bg-orange-950/50 hover:text-orange-600 border border-slate-200 dark:border-slate-700'
-                                }`}
-                              >
-                                <span>{sn}</span>
-                                {isSelected && <CheckCircle2 className="w-3 h-3 text-white" />}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  <BarcodeScannerModal
-                    isOpen={showQRScanner}
-                    onClose={() => setShowQRScanner(false)}
-                    onScan={(scannedVal) => {
-                      if (issuedSerialsMap[scannedVal.toUpperCase()]) {
-                        const prev = issuedSerialsMap[scannedVal.toUpperCase()];
-                        setValidationError(`Barcode ${scannedVal} SUDAH PERNAH DIKELUARKAN pada transaksi ${prev.no_transaksi}!`);
-                      } else {
-                        setSerialNumber((prev) => (prev ? `${prev}, ${scannedVal}` : scannedVal));
-                        setValidationError('');
-                      }
-                    }}
-                    title="Scan Barcode / QR Serial Number"
-                    registeredSerials={
-                      barang
-                        .find((b) => b.id === Number(barangId))
-                        ?.serial_number?.split(/[,;\n]+/)
-                        .map((s) => s.trim())
-                        .filter(Boolean) || []
-                    }
-                  />
                 </div>
               </div>
 
               <div>
+                <FormLabel required>Jumlah Barang</FormLabel>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="font-medium text-slate-700 dark:text-slate-300">
-                    Jumlah Barang Dikeluarkan <span className="text-red-500">*</span>
-                  </label>
-                  <span className="text-slate-500 text-[11px] font-mono">
-                    Stok Tersedia Saat Ini: <strong className="text-slate-800 dark:text-slate-200">{selectedItemStock}</strong>
-                  </span>
+                  <span className="text-[10px] text-slate-500">Stok Tersedia: <strong className="text-slate-800 dark:text-slate-200">{selectedItemStock}</strong></span>
                 </div>
-                <input
-                  type="number"
-                  min="1"
-                  max={selectedItemStock}
-                  required
-                  value={jumlah}
-                  onChange={(e) => setJumlah(Number(e.target.value))}
-                  className="w-full px-3 py-2 font-mono font-bold text-sm bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-orange-600"
-                />
+                <FormInput type="number" min="1" max={selectedItemStock} required value={jumlah} onChange={(e) => setJumlah(Number(e.target.value))} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-bold text-orange-600" />
               </div>
 
               <div>
-                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Keperluan / Deskripsi Distribusi <span className="text-red-500">*</span>
-                </label>
+                <FormLabel required>Keperluan</FormLabel>
                 <textarea
                   rows={2}
                   required
                   value={keperluan}
                   onChange={(e) => setKeperluan(e.target.value)}
-                  placeholder="Contoh: Penggantian perangkat monitor staf finance, disposisi pimpinan..."
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
+                  placeholder="Alasan pengeluaran barang..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-orange-500/20 transition-all outline-hidden"
                 />
               </div>
 
-              {/* INPUT GAMBAR / FOTO BUKTI PENGELUARAN */}
-              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 space-y-2">
-                <label className="block font-semibold text-slate-800 dark:text-slate-200">
-                  Foto Bukti Penyerahan / Dokumentasi Surat Jalan Fisik
+              <div className="p-4 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                <FormLabel>Foto Bukti</FormLabel>
+                <label className="flex items-center gap-3 cursor-pointer mt-2 hover:opacity-80">
+                  <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-orange-600 overflow-hidden">
+                    {fotoBukti ? <img src={fotoBukti} className="w-full h-full object-cover" /> : <Camera className="w-5 h-5" />}
+                  </div>
+                  <span className="text-xs font-bold text-slate-500">{fotoBukti ? 'Ganti Foto' : 'Ambil Foto Bukti...'}</span>
+                  <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
                 </label>
-                <p className="text-[11px] text-slate-500">
-                  Unggah foto tanda tangan penerima, foto serah terima fisik barang, atau nota pengeluaran (format JPG, PNG, WebP).
-                </p>
-
-                {fotoBukti ? (
-                  <div className="relative mt-2 p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center gap-3">
-                    <img
-                      src={fotoBukti}
-                      alt="Preview Bukti"
-                      className="w-16 h-16 object-cover rounded-md border border-slate-200 dark:border-slate-700 shrink-0 cursor-pointer"
-                      onClick={() => setViewingImage({ title: 'Preview Foto Bukti', url: fotoBukti })}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold text-xs">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Foto Berhasil Dimuat</span>
-                      </div>
-                      <p className="text-[10px] text-slate-400 mt-0.5">
-                        Tersimpan dalam database rekaman transaksi (base64 string).
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setViewingImage({ title: 'Preview Foto Bukti', url: fotoBukti })}
-                        className="p-1.5 rounded text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                        title="Lihat ukuran penuh"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleRemoveImage}
-                        className="p-1.5 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
-                        title="Hapus foto"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-2">
-                    <label className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-orange-500 dark:hover:border-orange-500 rounded-xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors bg-white dark:bg-slate-900">
-                      <div className="w-9 h-9 rounded-full bg-orange-100 dark:bg-orange-950 text-orange-600 dark:text-orange-400 flex items-center justify-center">
-                        <Camera className="w-4 h-4" />
-                      </div>
-                      <div className="text-center">
-                        <span className="font-semibold text-orange-600 dark:text-orange-400 hover:underline">
-                          Klik untuk memilih foto
-                        </span>
-                        <span className="text-slate-500 text-[11px] block mt-0.5">
-                          Atau seret file gambar langsung ke sini (Maks. 2 MB)
-                        </span>
-                      </div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
-                )}
               </div>
 
-              {/* Submit Buttons */}
-              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-lg"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 text-xs font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-lg shadow-xs transition-colors"
-                >
-                  Simpan Transaksi Keluar
-                </button>
-              </div>
+              <button type="submit" className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-2xl shadow-lg shadow-orange-600/20 transition-all active:scale-95">Simpan Transaksi</button>
             </form>
           </div>
         </div>
       )}
 
-      {/* Lightbox / Image Viewer Modal */}
-      {viewingImage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-2xl w-full p-4 text-white shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3 text-xs">
-              <span className="font-semibold">{viewingImage.title}</span>
-              <button
-                onClick={() => setViewingImage(null)}
-                className="text-slate-400 hover:text-white p-1"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex justify-center items-center max-h-[70vh] overflow-hidden rounded-lg bg-black/40">
-              <img
-                src={viewingImage.url}
-                alt="Full View"
-                className="max-h-[68vh] max-w-full object-contain rounded"
-              />
-            </div>
-            <div className="flex justify-end pt-3 mt-2 border-t border-slate-800">
-              <button
-                onClick={() => setViewingImage(null)}
-                className="px-4 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-200"
-              >
-                Tutup
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Barcode Scanner Modal Integration */}
+      <BarcodeScannerModal
+        isOpen={showQRScanner}
+        onClose={() => setShowQRScanner(false)}
+        onScan={(scannedVal) => {
+          if (issuedSerialsMap[scannedVal.toUpperCase()]) {
+            const prev = issuedSerialsMap[scannedVal.toUpperCase()];
+            setValidationError(`Barcode ${scannedVal} SUDAH PERNAH DIKELUARKAN pada transaksi ${prev.no_transaksi}!`);
+          } else {
+            setSerialNumber((prev) => (prev ? `${prev}, ${scannedVal}` : scannedVal));
+            setValidationError('');
+          }
+        }}
+        title="Scan Serial Number"
+        registeredSerials={
+          barang
+            .find((b) => b.id === Number(barangId))
+            ?.serial_number?.split(/[,;\n]+/)
+            .map((s) => s.trim())
+            .filter(Boolean) || []
+        }
+      />
 
-      {/* Modal: Pindah Barang Antar Departemen */}
+      {/* Modal: Pindah Barang */}
       {transferModalItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl w-full max-w-xl max-h-[92vh] shadow-2xl flex flex-col overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0 bg-purple-50/50 dark:bg-purple-950/20">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/60 flex items-center justify-center text-purple-600 dark:text-purple-300">
-                  <ArrowRightLeft className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                    Formulir Perpindahan Barang Antar Departemen
-                  </h3>
-                  <p className="text-[11px] text-slate-500">
-                    Mutasi dan serah terima unit operasional ke departemen / divisi lain
-                  </p>
-                </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800 bg-purple-50/30 dark:bg-purple-950/20">
+              <div className="flex items-center gap-2">
+                 <ArrowRightLeft className="w-5 h-5 text-purple-600" />
+                 <h3 className="text-base font-black text-slate-900 dark:text-white">Perpindahan Barang</h3>
               </div>
-              <button
-                onClick={() => setTransferModalItem(null)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-md"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <button onClick={() => setTransferModalItem(null)} className="text-slate-400 hover:text-slate-600 p-1"><X className="w-5 h-5" /></button>
             </div>
 
-            {/* Error banner */}
             {transferError && (
-              <div className="mx-6 mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+              <div className="mx-6 mt-4 p-3 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
                 <span>{transferError}</span>
               </div>
             )}
 
-            {/* Form */}
-            <form onSubmit={handleSaveTransfer} className="p-6 space-y-4 text-xs overflow-y-auto scrollbar-thin flex-1">
-              {/* Unit Info Card */}
-              {(() => {
-                const targetBarang = barang.find((b) => b.id === transferModalItem.barang_id);
-                const allSNs = targetBarang?.serial_number
-                  ? targetBarang.serial_number.split(/[,;\n]+/).map((s) => s.trim()).filter(Boolean)
-                  : [];
-
-                return (
-                  <div className="p-3.5 rounded-xl border border-purple-200 dark:border-purple-800/60 bg-purple-50/40 dark:bg-purple-950/30 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
-                        <Package className="w-3.5 h-3.5" />
-                        Informasi Unit yang Dipindahkan
-                      </span>
-                      <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-purple-100 dark:border-purple-900">
-                        Ref Asal: {transferModalItem.no_transaksi}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 text-[11px] pt-1">
-                      <div>
-                        <div className="text-slate-400">Nama Barang:</div>
-                        <div className="font-semibold text-slate-800 dark:text-slate-200">
-                          {targetBarang?.nama_barang || `Barang #${transferModalItem.barang_id}`}
-                        </div>
-                        <div className="font-mono text-[10px] text-slate-500">
-                          {targetBarang?.kode_barang}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-slate-400">Departemen / PIC Saat Ini:</div>
-                        <div className="font-semibold text-purple-700 dark:text-purple-300">
-                          {transferModalItem.departemen}
-                        </div>
-                        <div className="text-[10px] text-slate-600 dark:text-slate-400">
-                          PIC Asal: <span className="font-medium">{transferModalItem.penerima}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {allSNs.length > 0 && (
-                      <div className="pt-2 border-t border-purple-200/60 dark:border-purple-800/40">
-                        <span className="text-[10px] text-slate-500 block mb-1">
-                          Pilih Serial Number Unit dari Data:
-                        </span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {allSNs.map((sn, idx) => (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => setTransferSN(sn)}
-                              className={`px-2 py-0.5 rounded text-[10px] font-mono transition-colors ${
-                                transferSN === sn
-                                  ? 'bg-purple-600 text-white font-bold'
-                                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 hover:border-purple-400'
-                              }`}
-                            >
-                              {sn}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-
-              <div className="p-3 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-lg text-xs text-purple-700 dark:text-purple-300 flex items-start gap-2 font-medium">
-                <ArrowRightLeft className="w-4 h-4 shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-semibold">Info Perpindahan:</span> Perpindahan barang tidak mengurangi sisa stok di gudang. Jumlah sisa stok tetap dipertahankan.
+            <form onSubmit={handleSaveTransfer} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto scrollbar-thin">
+              <div className="p-4 rounded-2xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/50 space-y-2">
+                <div className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-widest">Informasi Asal</div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                   <div>
+                      <div className="text-slate-500">Barang:</div>
+                      <div className="font-bold">{barang.find(b => b.id === transferModalItem.barang_id)?.nama_barang}</div>
+                   </div>
+                   <div>
+                      <div className="text-slate-500">PIC Asal:</div>
+                      <div className="font-bold">{transferModalItem.penerima}</div>
+                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    No. Dokumen Perpindahan <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={transferNoTransaksi}
-                    onChange={(e) => setTransferNoTransaksi(e.target.value)}
-                    className="w-full px-3 py-2 font-mono uppercase bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                  />
+                  <FormLabel required>No. Dokumen</FormLabel>
+                  <FormInput type="text" value={transferNoTransaksi} onChange={(e) => setTransferNoTransaksi(e.target.value)} required readOnly className="bg-slate-50 dark:bg-slate-800 font-mono" />
                 </div>
-
                 <div>
-                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Tanggal Perpindahan <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={transferTanggal}
-                    onChange={(e) => setTransferTanggal(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Nama Penerima / PIC Baru <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: Riko Gunawan, S.Kom"
-                    value={transferPenerimaBaru}
-                    onChange={(e) => setTransferPenerimaBaru(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Jumlah Unit Dipindahkan <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={transferJumlah}
-                    onChange={(e) => setTransferJumlah(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-full px-3 py-2 font-mono bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                  />
-                </div>
-              </div>
-
-              {/* Model and Serial Number */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Model Barang
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: Hytera MD788G"
-                    value={transferModel}
-                    onChange={(e) => setTransferModel(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Serial Number (SN) Unit
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: 23016A0157"
-                    value={transferSN}
-                    onChange={(e) => setTransferSN(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white font-mono"
-                  />
+                  <FormLabel required>Tanggal</FormLabel>
+                  <FormInput type="date" value={transferTanggal} onChange={(e) => setTransferTanggal(e.target.value)} required />
                 </div>
               </div>
 
               <div>
-                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Keperluan / Catatan Perpindahan <span className="text-red-500">*</span>
-                </label>
+                <FormLabel required>Penerima / PIC Baru</FormLabel>
+                <FormInput type="text" required value={transferPenerimaBaru} onChange={(e) => setTransferPenerimaBaru(e.target.value)} placeholder="Nama PIC Baru" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                 <div>
+                    <FormLabel required>Jumlah</FormLabel>
+                    <FormInput type="number" min="1" value={transferJumlah} onChange={(e) => setTransferJumlah(Number(e.target.value))} required />
+                 </div>
+                 <div>
+                    <FormLabel>Serial Number</FormLabel>
+                    <div className="flex gap-1">
+                      <FormInput type="text" value={transferSN} onChange={(e) => setTransferSN(e.target.value)} className="font-mono" />
+                      <button type="button" onClick={handleFetchTransferSerial} className="p-2.5 bg-purple-100 dark:bg-purple-900/40 text-purple-600 rounded-xl hover:bg-purple-200"><Barcode className="w-4 h-4" /></button>
+                    </div>
+                 </div>
+              </div>
+
+              <div>
+                <FormLabel required>Alasan Perpindahan</FormLabel>
                 <textarea
                   rows={2}
                   required
                   value={transferKeperluan}
                   onChange={(e) => setTransferKeperluan(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                  placeholder="Keterangan alokasi pemindahan atau mutasi antar divisi..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-purple-500/20 transition-all outline-hidden"
                 />
               </div>
 
-              {/* Foto Bukti Serah Terima */}
-              <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 bg-slate-50 dark:bg-slate-800/40">
-                <label className="block font-semibold text-slate-800 dark:text-slate-200 mb-1">
-                  Foto Bukti Serah Terima / Nota Mutasi Fisik
-                </label>
-                <p className="text-[11px] text-slate-500 mb-3">
-                  Unggah foto fisik tanda tangan serah terima, foto unit, atau dokumen perpindahan.
-                </p>
-
-                {transferFotoBukti ? (
-                  <div className="flex items-center gap-4 p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
-                    <img
-                      src={transferFotoBukti}
-                      alt="Bukti Transfer"
-                      className="w-16 h-16 object-cover rounded-md border border-slate-200 dark:border-slate-700"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <span className="text-xs font-semibold text-emerald-600 flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Foto Siap Dilampirkan
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setTransferFotoBukti('')}
-                      className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg"
-                      title="Hapus Foto"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <label className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-white dark:hover:bg-slate-900 transition-colors">
-                    <Camera className="w-6 h-6 text-purple-600 mb-1" />
-                    <span className="font-semibold text-purple-600 dark:text-purple-400">
-                      Klik untuk memilih foto
-                    </span>
-                    <span className="text-[10px] text-slate-400">Maksimal 2 MB (JPG, PNG, WebP)</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleTransferImageChange}
-                      className="hidden"
-                    />
-                  </label>
-                )}
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setTransferModalItem(null)}
-                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg shadow-xs transition-colors"
-                >
-                  <ArrowRightLeft className="w-4 h-4" />
-                  <span>Simpan &amp; Proses Pindah Barang</span>
-                </button>
-              </div>
+              <button type="submit" className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-2xl shadow-lg shadow-purple-600/20 transition-all active:scale-95">Proses Perpindahan</button>
             </form>
           </div>
         </div>
       )}
 
-      {/* Printable Delivery Order (Surat Jalan) Modal */}
-      {selectedDO && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white text-slate-900 rounded-xl w-full max-w-lg p-6 shadow-2xl text-xs print:p-0 print:shadow-none max-h-[90vh] overflow-y-auto">
-            {/* DO Header */}
-            <div className="flex justify-between items-start border-b pb-4">
-              <div>
-                <h2 className="text-base font-bold text-slate-900">
-                  {selectedDO.no_transaksi.startsWith('TRF-')
-                    ? 'SURAT BUKTI PERPINDAHAN BARANG'
-                    : 'SURAT PENGELUARAN BARANG (DO)'}
-                </h2>
-                <p className="text-[11px] text-slate-500">
-                  {selectedDO.no_transaksi.startsWith('TRF-')
-                    ? 'Serah Terima & Mutasi Antar Unit/Departemen'
-                    : 'Unit Logistik & Gudang Inventaris'}
-                </p>
-              </div>
-              <div className="text-right">
-                <span className="font-mono font-bold text-sm text-orange-600">{selectedDO.no_transaksi}</span>
-                <p className="text-[11px] text-slate-500">{selectedDO.tanggal}</p>
-              </div>
+      {/* Modal: Recall */}
+      {recallModalItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800 bg-amber-50/30 dark:bg-amber-950/20">
+               <div className="flex items-center gap-2">
+                 <RotateCcw className="w-5 h-5 text-amber-600" />
+                 <h3 className="text-base font-black text-slate-900 dark:text-white">Tarik Kembali Barang</h3>
+               </div>
+               <button onClick={() => setRecallModalItem(null)} className="text-slate-400 hover:text-slate-600 p-1"><X className="w-5 h-5" /></button>
             </div>
 
-            {/* DO Meta */}
-            <div className="grid grid-cols-2 gap-4 py-4 border-b text-[11px]">
-              <div>
-                <span className="text-slate-400 block">Nama Penerima:</span>
-                <span className="font-bold text-slate-800">{selectedDO.penerima}</span>
-                {selectedDO.departemen && selectedDO.departemen !== '-' && (
-                  <p className="text-slate-600">Departemen: {selectedDO.departemen}</p>
-                )}
+            <form onSubmit={handleExecuteRecall} className="p-6 space-y-4">
+              <div className="p-4 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/50 text-xs">
+                 <div className="font-bold text-amber-700 mb-1 flex items-center gap-1.5"><AlertCircle className="w-4 h-4" /> Perhatian</div>
+                 <p className="text-slate-600 dark:text-slate-400">Anda akan menarik kembali <strong className="text-slate-900 dark:text-white">{recallModalItem.jumlah} unit</strong> barang dari <strong className="text-slate-900 dark:text-white">{recallModalItem.penerima}</strong> ke gudang.</p>
               </div>
+
               <div>
-                <span className="text-slate-400 block">Keperluan:</span>
-                <span className="font-medium text-slate-800">{selectedDO.keperluan}</span>
+                <FormLabel required>Kondisi Barang</FormLabel>
+                <div className="grid grid-cols-3 gap-2">
+                   {(['Baik', 'Perbaikan', 'Rusak'] as const).map(k => (
+                     <button
+                       key={k}
+                       type="button"
+                       onClick={() => setRecallCondition(k)}
+                       className={`py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                         recallCondition === k
+                           ? k === 'Baik' ? 'bg-emerald-600 text-white border-emerald-600' : k === 'Rusak' ? 'bg-red-600 text-white border-red-600' : 'bg-amber-600 text-white border-amber-600'
+                           : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700'
+                       }`}
+                     >
+                       {k}
+                     </button>
+                   ))}
+                </div>
               </div>
-            </div>
 
-            {/* Item Table */}
-            <div className="py-4">
-              <table className="w-full text-left text-[11px]">
-                <thead className="bg-slate-100 font-semibold">
-                  <tr>
-                    <th className="p-2">Kode</th>
-                    <th className="p-2">Item Barang</th>
-                    <th className="p-2 text-right">Jumlah Dikeluarkan</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b">
-                    <td className="p-2 font-mono">
-                      {barang.find((b) => b.id === selectedDO.barang_id)?.kode_barang}
-                    </td>
-                    <td className="p-2 font-medium">
-                      <div>{barang.find((b) => b.id === selectedDO.barang_id)?.nama_barang}</div>
-                      {selectedDO.model && (
-                        <div className="text-[10px] text-slate-500 font-mono">
-                          Model: {selectedDO.model}
-                        </div>
-                      )}
-                      {selectedDO.serial_number && (
-                        <div className="text-[10px] text-slate-700 font-mono font-semibold">
-                          SN: {selectedDO.serial_number}
-                        </div>
-                      )}
-                    </td>
-                    <td className="p-2 text-right font-mono font-bold text-orange-600">
-                      {selectedDO.jumlah} Unit
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            {/* Attached Image on DO if present */}
-            {selectedDO.foto_bukti && (
-              <div className="my-3 p-3 rounded-lg border border-slate-200 bg-slate-50">
-                <span className="font-bold text-[11px] text-slate-700 block mb-1.5">
-                  Lampiran Foto Bukti Penyerahan:
-                </span>
-                <img
-                  src={selectedDO.foto_bukti}
-                  alt="Lampiran Bukti"
-                  className="max-h-40 w-auto rounded border border-slate-300 object-contain mx-auto"
+              <div>
+                <FormLabel required>Alasan Penarikan</FormLabel>
+                <textarea
+                  rows={3}
+                  required
+                  value={recallReason}
+                  onChange={(e) => setRecallReason(e.target.value)}
+                  placeholder="Keterangan penarikan..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-amber-500/20 transition-all outline-hidden"
                 />
               </div>
-            )}
 
-            {/* Signatures */}
-            <div className="grid grid-cols-2 gap-8 pt-6 pb-4 text-center text-[11px]">
-              <div>
-                <div className="text-slate-500 mb-12">Petugas Gudang</div>
-                <div className="border-t border-slate-300 pt-1 font-semibold">( Kepala Logistik )</div>
-              </div>
-              <div>
-                <div className="text-slate-500 mb-12">Yang Menerima</div>
-                <div className="border-t border-slate-300 pt-1 font-semibold">({selectedDO.penerima})</div>
-              </div>
+              <button type="submit" className="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-2xl shadow-lg shadow-amber-600/20 transition-all active:scale-95 flex items-center justify-center gap-2">
+                 <Undo2 className="w-4 h-4" />
+                 <span>Proses Penarikan</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: View Full Image */}
+      {viewingImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setViewingImage(null)}>
+          <div className="relative max-w-4xl w-full flex flex-col items-center" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={() => setViewingImage(null)}
+              className="absolute -top-12 right-0 p-2 text-white hover:text-slate-300"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <div className="bg-white dark:bg-slate-900 p-2 rounded-3xl shadow-2xl overflow-hidden">
+               <img src={viewingImage.url} alt={viewingImage.title} className="max-h-[80vh] w-auto rounded-2xl" />
+               <div className="p-4 text-center font-bold text-slate-900 dark:text-white">{viewingImage.title}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Print DO */}
+      {selectedDO && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-base font-black text-slate-900 dark:text-white">Cetak Surat Jalan</h3>
+              <button onClick={() => setSelectedDO(null)} className="text-slate-400 hover:text-slate-600 p-1"><X className="w-5 h-5" /></button>
+            </div>
+            
+            <div className="p-8 space-y-6 text-slate-800 dark:text-slate-200 overflow-y-auto print:p-0">
+               <div className="flex justify-between items-start border-b pb-4">
+                  <div>
+                    <h1 className="text-xl font-black text-orange-600 tracking-tight">SURAT JALAN</h1>
+                    <p className="text-xs text-slate-500 font-mono">{selectedDO.no_transaksi}</p>
+                  </div>
+                  <div className="text-right text-xs">
+                    <p className="font-bold">Unit Logistik</p>
+                    <p>{selectedDO.tanggal}</p>
+                  </div>
+               </div>
+
+               <div className="grid grid-cols-2 gap-8 text-xs">
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Penerima:</p>
+                    <p className="font-bold text-sm">{selectedDO.penerima}</p>
+                    <p className="text-slate-500">{selectedDO.departemen}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Keterangan:</p>
+                    <p className="italic">{selectedDO.keperluan}</p>
+                  </div>
+               </div>
+
+               <div className="border-y py-4">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-slate-400 font-bold uppercase text-[9px] tracking-widest">
+                        <th className="text-left pb-2">Barang</th>
+                        <th className="text-right pb-2">Jumlah</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="py-2">
+                           <p className="font-bold">{barang.find(b => b.id === selectedDO.barang_id)?.nama_barang}</p>
+                           <p className="text-slate-500 font-mono text-[10px]">{barang.find(b => b.id === selectedDO.barang_id)?.kode_barang} {selectedDO.serial_number && `· SN: ${selectedDO.serial_number}`}</p>
+                        </td>
+                        <td className="text-right font-black py-2">{selectedDO.jumlah} Unit</td>
+                      </tr>
+                    </tbody>
+                  </table>
+               </div>
+
+               <div className="grid grid-cols-2 gap-12 pt-8 text-center text-xs">
+                  <div>
+                    <div className="h-16 mb-2"></div>
+                    <p className="font-bold border-t pt-1">Kepala Logistik</p>
+                  </div>
+                  <div>
+                    <div className="h-16 mb-2"></div>
+                    <p className="font-bold border-t pt-1">Penerima</p>
+                  </div>
+               </div>
             </div>
 
-            {/* Modal Actions */}
-            <div className="flex justify-end gap-2 pt-4 border-t no-print">
-              <button
-                onClick={() => setSelectedDO(null)}
-                className="px-4 py-1.5 text-xs bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700"
-              >
-                Tutup
-              </button>
-              <button
-                onClick={() => window.print()}
-                className="px-4 py-1.5 text-xs bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg flex items-center gap-1.5 shadow-xs"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>Cetak Surat Jalan</span>
+            <div className="p-6 bg-slate-50 dark:bg-slate-800/50 flex gap-3">
+              <button onClick={() => setSelectedDO(null)} className="flex-1 py-2.5 font-bold text-slate-600 hover:bg-slate-200 rounded-2xl transition-all">Tutup</button>
+              <button onClick={() => window.print()} className="flex-1 py-2.5 bg-slate-900 hover:bg-black text-white font-bold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2">
+                 <Printer className="w-4 h-4" />
+                 <span>Cetak Sekarang</span>
               </button>
             </div>
           </div>

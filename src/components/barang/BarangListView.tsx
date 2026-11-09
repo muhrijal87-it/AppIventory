@@ -3,7 +3,6 @@ import {
   Package,
   Plus,
   Search,
-  Filter,
   Edit,
   Trash2,
   Eye,
@@ -13,8 +12,6 @@ import {
   Barcode,
   X,
   MapPin,
-  Tag,
-  ArrowUpDown,
   Camera,
   Image as ImageIcon
 } from 'lucide-react';
@@ -22,6 +19,27 @@ import { Barang, Kategori, Satuan } from '../../types';
 import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
 import { mysql } from '../../db/mysqlEngine';
+
+// --- Reusable Form Components ---
+const FormLabel: React.FC<{ children: React.ReactNode; required?: boolean }> = ({ children, required }) => (
+  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+    {children} {required && <span className="text-red-500">*</span>}
+  </label>
+);
+
+const FormInput = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
+  <input
+    {...props}
+    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all outline-hidden"
+  />
+);
+
+const FormSelect = (props: React.SelectHTMLAttributes<HTMLSelectElement>) => (
+  <select
+    {...props}
+    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all outline-hidden"
+  />
+);
 
 export const BarangListView: React.FC = () => {
   const { barang, kategori, satuan, addBarang, updateBarang, deleteBarang, reloadState } = useInventory();
@@ -227,17 +245,6 @@ export const BarangListView: React.FC = () => {
     setShowEditModal(false);
   };
 
-  const handleDelete = (item: Barang) => {
-    setItemToDelete(item);
-  };
-
-  const handleConfirmDelete = () => {
-    if (itemToDelete) {
-      deleteBarang(itemToDelete.id);
-      setItemToDelete(null);
-    }
-  };
-
   const exportCSV = () => {
     const headers = ['Kode Barang', 'Nama Barang', 'Kategori', 'Satuan', 'Stok', 'Stok Min', 'Lokasi Rak', 'Kondisi'];
     const rows = filteredItems.map((b) => {
@@ -267,32 +274,30 @@ export const BarangListView: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Top Action Bar */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Top Banner */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">
-              Katalog Data Barang Inventaris
-            </h2>
-          </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Kelola inventaris fisik, foto produk, kontrol stok minimum, rak penyimpanan, dan kode barcode.
+          <h2 className="text-lg font-black text-slate-900 dark:text-white">
+            Katalog Data Barang
+          </h2>
+          <p className="text-xs text-slate-500 mt-1">
+            Kelola data master inventaris, foto barang, dan kontrol stok minimum.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <button
             onClick={exportCSV}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl hover:bg-slate-50 transition-all"
           >
-            <Download className="w-4 h-4 text-slate-500" />
+            <Download className="w-4 h-4" />
             <span>Ekspor CSV</span>
           </button>
 
           {can('manage_inventory') && (
             <button
               onClick={handleOpenAdd}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-xs transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-2xl shadow-lg shadow-red-600/20 transition-all active:scale-95"
             >
               <Plus className="w-4 h-4" />
               <span>Tambah Barang Baru</span>
@@ -302,112 +307,77 @@ export const BarangListView: React.FC = () => {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-xs">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-xs">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* Search Box */}
           <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Cari kode, nama, atau rak..."
-              className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-hidden focus:border-red-500"
+              className="w-full pl-10 pr-4 py-2.5 text-xs bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-red-500 transition-all"
             />
           </div>
 
-          {/* Filter by Category */}
-          <div>
-            <select
-              value={selectedKategori}
-              onChange={(e) => setSelectedKategori(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200"
-            >
-              <option value="all">Semua Kategori</option>
-              {kategori.map((k) => (
-                <option key={k.id} value={k.id}>
-                  {k.nama_kategori}
-                </option>
-              ))}
-            </select>
-          </div>
+          <select
+            value={selectedKategori}
+            onChange={(e) => setSelectedKategori(e.target.value)}
+            className="px-4 py-2.5 text-xs bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-red-500 transition-all"
+          >
+            <option value="all">Semua Kategori</option>
+            {kategori.map((k) => <option key={k.id} value={k.id}>{k.nama_kategori}</option>)}
+          </select>
 
-          {/* Filter by Stock Level */}
-          <div>
-            <select
-              value={selectedStockFilter}
-              onChange={(e) => setSelectedStockFilter(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200"
-            >
-              <option value="all">Semua Status Stok</option>
-              <option value="aman">Stok Aman (&gt; Min)</option>
-              <option value="kritis">Stok Kritis (≤ Min)</option>
-              <option value="habis">Stok Habis (0)</option>
-            </select>
-          </div>
+          <select
+            value={selectedStockFilter}
+            onChange={(e) => setSelectedStockFilter(e.target.value)}
+            className="px-4 py-2.5 text-xs bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-red-500 transition-all"
+          >
+            <option value="all">Semua Status Stok</option>
+            <option value="aman">Stok Aman</option>
+            <option value="kritis">Stok Kritis</option>
+            <option value="habis">Stok Habis</option>
+          </select>
 
-          {/* Sort By */}
-          <div>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200"
-            >
-              <option value="id_desc">Terbaru Ditambahkan</option>
-              <option value="stok_asc">Stok Paling Sedikit</option>
-              <option value="stok_desc">Stok Paling Banyak</option>
-              <option value="nama_asc">Nama Barang (A - Z)</option>
-            </select>
-          </div>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="px-4 py-2.5 text-xs bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-red-500 transition-all"
+          >
+            <option value="id_desc">Terbaru</option>
+            <option value="stok_asc">Stok Terkecil</option>
+            <option value="stok_desc">Stok Terbanyak</option>
+            <option value="nama_asc">Nama (A-Z)</option>
+          </select>
         </div>
       </div>
 
-      {/* Main Inventory Table with Product Photo Thumbnail */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
+      {/* Main Table */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800">
+            <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 font-bold uppercase tracking-widest text-[10px]">
               <tr>
-                <th className="px-4 py-3">Kode / SKU</th>
-                <th className="px-4 py-3">Barang &amp; Foto</th>
-                <th className="px-4 py-3">Kategori</th>
-                <th className="px-4 py-3 text-center">Stok Fisik</th>
-                <th className="px-4 py-3 text-center">Stok Min</th>
-                <th className="px-4 py-3">Lokasi Rak</th>
-                <th className="px-4 py-3 text-center">Kondisi</th>
-                <th className="px-4 py-3 text-center">Aksi</th>
+                <th className="px-6 py-4">Kode / SKU</th>
+                <th className="px-6 py-4">Barang &amp; Foto</th>
+                <th className="px-6 py-4 text-center">Stok Fisik</th>
+                <th className="px-6 py-4">Kategori</th>
+                <th className="px-6 py-4">Lokasi Rak</th>
+                <th className="px-6 py-4 text-center">Status</th>
+                <th className="px-6 py-4 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
-                    <div className="flex flex-col items-center justify-center space-y-3">
-                      <Package className="w-10 h-10 text-slate-300 dark:text-slate-700" />
-                      <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                        {barang.length === 0
-                          ? 'Database barang saat ini masih kosong.'
-                          : 'Tidak ada barang yang cocok dengan kriteria pencarian.'}
-                      </p>
-                      {barang.length === 0 && (
-                        <div className="flex items-center gap-3 pt-2">
-                          <button
-                            onClick={handleRestoreSeedData}
-                            className="px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors border border-slate-200 dark:border-slate-700"
-                          >
-                            Muat 12 Master Data Barang (Seed Default)
-                          </button>
-                          {can('manage_inventory') && (
-                            <button
-                              onClick={handleOpenAdd}
-                              className="px-3.5 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors flex items-center gap-1.5"
-                            >
-                              <Plus className="w-4 h-4" />
-                              <span>Tambah Barang Baru</span>
-                            </button>
-                          )}
-                        </div>
-                      )}
+                  <td colSpan={7} className="py-20 text-center">
+                    <div className="flex flex-col items-center gap-4">
+                       <Package className="w-12 h-12 text-slate-200" />
+                       <p className="text-slate-400 italic">Data barang tidak ditemukan.</p>
+                       {barang.length === 0 && (
+                         <button onClick={handleRestoreSeedData} className="px-4 py-2 text-[10px] font-bold text-red-600 bg-red-50 rounded-xl border border-red-100">Muat Data Seed</button>
+                       )}
                     </div>
                   </td>
                 </tr>
@@ -419,108 +389,46 @@ export const BarangListView: React.FC = () => {
                   const isHabis = item.stok === 0;
 
                   return (
-                    <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-850 transition-colors">
-                      <td className="px-4 py-3 font-mono font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                        <button
-                          onClick={() => handleOpenDetail(item)}
-                          className="hover:text-red-600 transition-colors"
-                        >
-                          {item.kode_barang}
-                        </button>
+                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors">
+                      <td className="px-6 py-4 font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                        <button onClick={() => handleOpenDetail(item)} className="hover:text-red-600">{item.kode_barang}</button>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          {item.foto ? (
-                            <img
-                              src={item.foto}
-                              alt={item.nama_barang}
-                              className="w-10 h-10 object-cover rounded-lg border border-slate-200 dark:border-slate-700 shrink-0 cursor-pointer hover:scale-105 transition-transform"
-                              onClick={() => handleOpenDetail(item)}
-                            />
-                          ) : (
-                            <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 shrink-0">
-                              <Package className="w-5 h-5 text-slate-400" />
-                            </div>
-                          )}
-                          <div className="min-w-0">
-                            <div
-                              onClick={() => handleOpenDetail(item)}
-                              className="font-semibold text-slate-900 dark:text-white cursor-pointer hover:text-red-600 transition-colors"
-                            >
-                              {item.nama_barang}
-                            </div>
-                            <div className="text-[11px] text-slate-400 truncate max-w-xs mt-0.5">
-                              {item.model ? `Model: ${item.model}` : item.deskripsi || '-'}
-                            </div>
+                          <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 shrink-0 overflow-hidden border border-slate-200 dark:border-slate-700">
+                            {item.foto ? <img src={item.foto} className="w-full h-full object-cover" /> : <Package className="w-5 h-5" />}
+                          </div>
+                          <div>
+                            <div onClick={() => handleOpenDetail(item)} className="font-bold text-slate-900 dark:text-white cursor-pointer hover:text-red-600">{item.nama_barang}</div>
+                            <div className="text-[10px] text-slate-400 font-mono">{item.model || 'No Model'}</div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                        {kat?.nama_kategori || '-'}
-                      </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-mono font-bold shadow-2xs ${
-                            isHabis
-                              ? 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900'
-                              : isKritis
-                              ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-900'
-                              : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                          }`}
-                        >
-                          <span>{item.stok}</span>
-                          <span className="text-[10px] font-sans font-normal opacity-80">{sat?.nama_satuan || 'Unit'}</span>
+                      <td className="px-6 py-4 text-center whitespace-nowrap">
+                        <span className={`inline-block px-2.5 py-1 rounded-xl text-xs font-black font-mono ${
+                          isHabis ? 'bg-red-100 text-red-600' : isKritis ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'
+                        }`}>
+                          {item.stok} <span className="text-[9px] font-normal">{sat?.nama_satuan}</span>
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center font-mono font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                        {item.stok_min}
+                      <td className="px-6 py-4 text-slate-600 dark:text-slate-400 whitespace-nowrap">{kat?.nama_kategori}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-slate-600 dark:text-slate-400 font-medium">
+                        <div className="flex items-center gap-1.5"><MapPin className="w-3 h-3" /> {item.lokasi_rak}</div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-slate-600 dark:text-slate-300">
-                        <div className="flex items-center gap-1.5 text-xs">
-                          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span>{item.lokasi_rak}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                            item.kondisi === 'Baik'
-                              ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
-                              : item.kondisi === 'Perbaikan'
-                              ? 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
-                              : 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300'
-                          }`}
-                        >
+                      <td className="px-6 py-4 text-center whitespace-nowrap">
+                        <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${
+                          item.kondisi === 'Baik' ? 'bg-emerald-50 text-emerald-600' : item.kondisi === 'Perbaikan' ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'
+                        }`}>
                           {item.kondisi}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => handleOpenDetail(item)}
-                            className="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
-                            title="Detail & Foto"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
-                          {can('manage_inventory') && (
-                            <button
-                              onClick={() => handleOpenEdit(item)}
-                              className="p-1.5 rounded hover:bg-blue-100 dark:hover:bg-blue-950 text-blue-600 dark:text-blue-400 transition-colors"
-                              title="Edit Data Barang"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          {can('delete_inventory') && (
-                            <button
-                              onClick={() => handleDelete(item)}
-                              className="p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-950 text-red-600 dark:text-red-400 transition-colors"
-                              title="Hapus Barang (Hanya Administrator)"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                      <td className="px-6 py-4 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-2">
+                           <button onClick={() => handleOpenDetail(item)} className="p-1.5 text-slate-400 hover:text-slate-600"><Eye className="w-4 h-4" /></button>
+                           {can('manage_inventory') && <button onClick={() => handleOpenEdit(item)} className="p-1.5 text-slate-400 hover:text-red-600"><Edit className="w-4 h-4" /></button>}
+                           {can('delete_inventory') && (
+                             <button onClick={() => setItemToDelete(item)} className="p-1.5 text-slate-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+                           )}
                         </div>
                       </td>
                     </tr>
@@ -532,444 +440,178 @@ export const BarangListView: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal: Tambah & Edit Barang (with Product Image Upload) */}
+      {/* Modal: Add/Edit */}
       {(showAddModal || showEditModal) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl w-full max-w-2xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
-              <div className="flex items-center gap-2">
-                <Package className="w-5 h-5 text-red-600" />
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                  {showAddModal ? 'Tambah Barang Inventaris Baru' : `Edit Barang: ${selectedItem?.kode_barang}`}
-                </h3>
-              </div>
-              <button
-                onClick={() => {
-                  setShowAddModal(false);
-                  setShowEditModal(false);
-                }}
-                className="text-slate-400 hover:text-slate-600 p-1"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+             <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800">
+               <h3 className="text-base font-black text-slate-900 dark:text-white">{showAddModal ? 'Tambah Barang' : 'Edit Barang'}</h3>
+               <button onClick={() => { setShowAddModal(false); setShowEditModal(false); }} className="text-slate-400 hover:text-slate-600 p-1"><X className="w-5 h-5" /></button>
+             </div>
+             
+             {modalError && (
+               <div className="mx-6 mt-4 p-3 rounded-xl bg-red-50 text-red-600 border border-red-100 text-xs flex items-center gap-2">
+                 <AlertTriangle className="w-4 h-4" />
+                 <span>{modalError}</span>
+               </div>
+             )}
 
-            {modalError && (
-              <div className="mx-6 mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900 text-xs flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-red-600" />
-                <span>{modalError}</span>
-              </div>
-            )}
-
-            {/* Modal Body */}
-            <form onSubmit={showAddModal ? handleSubmitAdd : handleSubmitEdit} className="p-6 overflow-y-auto space-y-4 text-xs scrollbar-thin flex-1">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Kode Barang (SKU / Barcode ID) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formState.kode_barang}
-                    onChange={(e) => setFormState({ ...formState, kode_barang: e.target.value.toUpperCase() })}
-                    className="w-full px-3 py-2 font-mono uppercase bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                  />
+             <form onSubmit={showAddModal ? handleSubmitAdd : handleSubmitEdit} className="p-6 space-y-4 overflow-y-auto scrollbar-thin flex-1">
+                <div className="grid grid-cols-2 gap-4">
+                   <div>
+                      <FormLabel required>Kode Barang</FormLabel>
+                      <FormInput type="text" value={formState.kode_barang} onChange={(e) => setFormState({ ...formState, kode_barang: e.target.value.toUpperCase() })} required readOnly={showEditModal} className="bg-slate-50 font-mono uppercase" />
+                   </div>
+                   <div>
+                      <FormLabel>Barcode EAN-13</FormLabel>
+                      <FormInput type="text" value={formState.barcode} onChange={(e) => setFormState({ ...formState, barcode: e.target.value })} className="font-mono" />
+                   </div>
                 </div>
 
                 <div>
-                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Barcode EAN-13
-                  </label>
-                  <input
-                    type="text"
-                    value={formState.barcode}
-                    onChange={(e) => setFormState({ ...formState, barcode: e.target.value })}
-                    className="w-full px-3 py-2 font-mono bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                  />
+                   <FormLabel required>Nama Barang</FormLabel>
+                   <FormInput type="text" required value={formState.nama_barang} onChange={(e) => setFormState({ ...formState, nama_barang: e.target.value })} placeholder="Nama Lengkap Barang" />
                 </div>
-              </div>
 
-              <div>
-                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Nama Barang <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formState.nama_barang}
-                  onChange={(e) => setFormState({ ...formState, nama_barang: e.target.value })}
-                  placeholder="Contoh: Laptop Lenovo ThinkPad L14 Gen 4"
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                />
-              </div>
+                <div className="grid grid-cols-2 gap-4">
+                   <div>
+                      <FormLabel>Model / Tipe</FormLabel>
+                      <FormInput type="text" value={formState.model} onChange={(e) => setFormState({ ...formState, model: e.target.value })} />
+                   </div>
+                   <div>
+                      <FormLabel required>Kategori</FormLabel>
+                      <FormSelect value={formState.kategori_id} onChange={(e) => setFormState({ ...formState, kategori_id: Number(e.target.value) })} required>
+                        {kategori.map(k => <option key={k.id} value={k.id}>{k.nama_kategori}</option>)}
+                      </FormSelect>
+                   </div>
+                </div>
 
-              <div>
-                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Model / Tipe Barang
-                </label>
-                <input
-                  type="text"
-                  value={formState.model}
-                  onChange={(e) => setFormState({ ...formState, model: e.target.value })}
-                  placeholder="Contoh: MD788G DMR Digital / ThinkPad L14"
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                />
-              </div>
+                <div className="grid grid-cols-2 gap-4">
+                   <div>
+                      <FormLabel required>Satuan</FormLabel>
+                      <FormSelect value={formState.satuan_id} onChange={(e) => setFormState({ ...formState, satuan_id: Number(e.target.value) })} required>
+                        {satuan.map(s => <option key={s.id} value={s.id}>{s.nama_satuan}</option>)}
+                      </FormSelect>
+                   </div>
+                   <div>
+                      <FormLabel required>Lokasi Rak</FormLabel>
+                      <FormInput type="text" value={formState.lokasi_rak} onChange={(e) => setFormState({ ...formState, lokasi_rak: e.target.value })} required />
+                   </div>
+                </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Kategori Barang <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formState.kategori_id}
-                    onChange={(e) => setFormState({ ...formState, kategori_id: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                  >
-                    {kategori.map((k) => (
-                      <option key={k.id} value={k.id}>
-                        {k.nama_kategori}
-                      </option>
-                    ))}
-                  </select>
+                <div className="grid grid-cols-3 gap-4">
+                   <div>
+                      <FormLabel required>Stok Awal</FormLabel>
+                      <FormInput type="number" min="0" value={formState.stok} onChange={(e) => setFormState({ ...formState, stok: Number(e.target.value) })} required />
+                   </div>
+                   <div>
+                      <FormLabel required>Stok Min</FormLabel>
+                      <FormInput type="number" min="0" value={formState.stok_min} onChange={(e) => setFormState({ ...formState, stok_min: Number(e.target.value) })} required />
+                   </div>
+                   <div>
+                      <FormLabel required>Kondisi</FormLabel>
+                      <FormSelect value={formState.kondisi} onChange={(e) => setFormState({ ...formState, kondisi: e.target.value as any })} required>
+                        <option value="Baik">Baik</option>
+                        <option value="Perbaikan">Perbaikan</option>
+                        <option value="Rusak">Rusak</option>
+                      </FormSelect>
+                   </div>
                 </div>
 
                 <div>
-                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Satuan Barang <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formState.satuan_id}
-                    onChange={(e) => setFormState({ ...formState, satuan_id: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                  >
-                    {satuan.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.nama_satuan} ({s.kode_satuan})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Jumlah Stok Fisik (Awal) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    value={formState.stok}
-                    onChange={(e) => setFormState({ ...formState, stok: Math.max(0, parseInt(e.target.value) || 0) })}
-                    placeholder="Contoh: 10"
-                    className="w-full px-3 py-2 font-mono font-bold bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                  />
+                   <FormLabel>Deskripsi</FormLabel>
+                   <textarea
+                     rows={2}
+                     value={formState.deskripsi}
+                     onChange={(e) => setFormState({ ...formState, deskripsi: e.target.value })}
+                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-red-500/20 transition-all outline-hidden"
+                   />
                 </div>
 
-                <div>
-                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Stok Minimal (Alert Peringatan) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    value={formState.stok_min}
-                    onChange={(e) => setFormState({ ...formState, stok_min: Math.max(0, parseInt(e.target.value) || 0) })}
-                    placeholder="Contoh: 5"
-                    className="w-full px-3 py-2 font-mono font-bold bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Lokasi Rak / Penyimpanan
-                  </label>
-                  <input
-                    type="text"
-                    value={formState.lokasi_rak}
-                    onChange={(e) => setFormState({ ...formState, lokasi_rak: e.target.value })}
-                    placeholder="Contoh: Rak B-2 (Gudang ATK)"
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                  />
+                <div className="p-4 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                   <FormLabel>Foto Produk</FormLabel>
+                   <label className="flex items-center gap-3 cursor-pointer mt-2">
+                     <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-red-600 overflow-hidden shrink-0">
+                       {formState.foto ? <img src={formState.foto} className="w-full h-full object-cover" /> : <Camera className="w-5 h-5" />}
+                     </div>
+                     <span className="text-xs font-bold text-slate-500">{formState.foto ? 'Ganti Foto' : 'Pilih Foto...'}</span>
+                     <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
+                   </label>
                 </div>
 
-                <div>
-                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Kondisi Fisik Barang
-                  </label>
-                  <select
-                    value={formState.kondisi}
-                    onChange={(e) => setFormState({ ...formState, kondisi: e.target.value as any })}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                  >
-                    <option value="Baik">Baik (Normal)</option>
-                    <option value="Perbaikan">Perbaikan (Dalam Maintenance)</option>
-                    <option value="Rusak">Rusak (Afkir)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Deskripsi / Spesifikasi Lengkap
-                </label>
-                <textarea
-                  rows={2}
-                  value={formState.deskripsi}
-                  onChange={(e) => setFormState({ ...formState, deskripsi: e.target.value })}
-                  placeholder="Keterangan spesifikasi teknis atau nomor serial..."
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                />
-              </div>
-
-              {/* INPUT GAMBAR / FOTO BARANG */}
-              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 space-y-2">
-                <label className="block font-semibold text-slate-800 dark:text-slate-200">
-                  Foto / Gambar Fisik Barang
-                </label>
-                <p className="text-[11px] text-slate-500">
-                  Unggah gambar produk untuk mempermudah identifikasi staf gudang (JPG, PNG, WebP).
-                </p>
-
-                {formState.foto ? (
-                  <div className="relative mt-2 p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center gap-3">
-                    <img
-                      src={formState.foto}
-                      alt="Preview Produk"
-                      className="w-16 h-16 object-cover rounded-md border border-slate-200 dark:border-slate-700 shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold text-xs">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Gambar Berhasil Dipilih</span>
-                      </div>
-                      <p className="text-[10px] text-slate-400 mt-0.5">
-                        Akan ditampilkan di katalog dan kartu detail barang.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setFormState((prev) => ({ ...prev, foto: '' }))}
-                      className="p-1.5 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
-                      title="Hapus foto"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="mt-2">
-                    <label className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-red-500 dark:hover:border-red-500 rounded-xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors bg-white dark:bg-slate-900">
-                      <div className="w-9 h-9 rounded-full bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400 flex items-center justify-center">
-                        <Camera className="w-4 h-4" />
-                      </div>
-                      <div className="text-center">
-                        <span className="font-semibold text-red-600 dark:text-red-400 hover:underline">
-                          Pilih foto produk barang
-                        </span>
-                        <span className="text-slate-500 text-[11px] block mt-0.5">
-                          Seret atau klik untuk mengunggah file (Maks. 2 MB)
-                        </span>
-                      </div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
-                )}
-              </div>
-
-              {/* Submit Buttons */}
-              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddModal(false);
-                    setShowEditModal(false);
-                  }}
-                  className="px-4 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-lg"
-                >
-                  Batal
+                <button type="submit" className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-2xl shadow-lg shadow-red-600/20 transition-all active:scale-95">
+                   {showAddModal ? 'Simpan Barang' : 'Perbarui Barang'}
                 </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-xs transition-colors"
-                >
-                  {showAddModal ? 'Simpan Data Barang' : 'Perbarui Data Barang'}
-                </button>
-              </div>
-            </form>
+             </form>
           </div>
         </div>
       )}
 
-      {/* Modal: Detail Barang & Barcode with Image Preview */}
+      {/* Modal: Detail */}
       {showDetailModal && selectedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <div>
-                <span className="font-mono text-xs text-red-600 font-bold">{selectedItem.kode_barang}</span>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">{selectedItem.nama_barang}</h3>
-              </div>
-              <button
-                onClick={() => setShowDetailModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+             <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800">
+                <h3 className="text-base font-black text-slate-900 dark:text-white">Detail Barang</h3>
+                <button onClick={() => setShowDetailModal(false)} className="text-slate-400 hover:text-slate-600 p-1"><X className="w-5 h-5" /></button>
+             </div>
+             <div className="p-8">
+                <div className="flex items-center gap-6 mb-8">
+                   <div className="w-24 h-24 rounded-3xl bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
+                      {selectedItem.foto ? <img src={selectedItem.foto} className="w-full h-full object-cover" /> : <Package className="w-10 h-10 text-slate-200" />}
+                   </div>
+                   <div>
+                      <div className="text-xs font-bold text-red-600 font-mono mb-1">{selectedItem.kode_barang}</div>
+                      <h2 className="text-xl font-black text-slate-900 dark:text-white leading-tight">{selectedItem.nama_barang}</h2>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-500">{kategori.find(k => k.id === selectedItem.kategori_id)?.nama_kategori}</span>
+                        <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${selectedItem.kondisi === 'Baik' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>{selectedItem.kondisi}</span>
+                      </div>
+                   </div>
+                </div>
 
-            {/* Product Photo if exists */}
-            {selectedItem.foto && (
-              <div className="my-4 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex justify-center items-center p-2">
-                <img
-                  src={selectedItem.foto}
-                  alt={selectedItem.nama_barang}
-                  className="max-h-52 w-auto object-contain rounded-lg"
-                />
-              </div>
-            )}
+                <div className="grid grid-cols-2 gap-4 mb-8">
+                   <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Stok Fisik</div>
+                      <div className="text-lg font-black text-slate-900 dark:text-white">{selectedItem.stok} <span className="text-xs font-normal text-slate-500">{satuan.find(s => s.id === selectedItem.satuan_id)?.nama_satuan}</span></div>
+                   </div>
+                   <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Lokasi Rak</div>
+                      <div className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-1.5"><MapPin className="w-4 h-4 text-red-600" /> {selectedItem.lokasi_rak}</div>
+                   </div>
+                </div>
 
-            {/* Barcode Render SVG Simulation */}
-            <div className="my-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-center">
-              <div className="flex justify-center items-center h-14 space-x-1">
-                {[4, 2, 6, 2, 8, 4, 2, 6, 4, 8, 2, 4, 6, 2, 8, 4, 2, 6, 4, 8, 2, 4].map((h, idx) => (
-                  <div
-                    key={idx}
-                    className="bg-slate-900 dark:bg-slate-100 w-1 rounded-xs"
-                    style={{ height: `${h * 5}px` }}
-                  />
-                ))}
-              </div>
-              <div className="font-mono text-xs tracking-widest text-slate-600 dark:text-slate-400 mt-1.5 font-bold">
-                {selectedItem.barcode || selectedItem.kode_barang}
-              </div>
-            </div>
+                <div className="p-6 rounded-3xl bg-slate-950 text-white shadow-xl mb-6">
+                   <div className="flex flex-col items-center gap-4">
+                      <div className="flex justify-center items-center h-16 space-x-1">
+                        {[4, 2, 6, 2, 8, 4, 2, 6, 4, 8, 2, 4, 6, 2, 8, 4, 2, 6, 4, 8, 2, 4].map((h, idx) => (
+                          <div key={idx} className="bg-white w-1.5 rounded-full" style={{ height: `${h * 6}px` }} />
+                        ))}
+                      </div>
+                      <div className="font-mono text-sm tracking-[0.3em] font-bold">{selectedItem.barcode || selectedItem.kode_barang}</div>
+                   </div>
+                </div>
 
-            {/* Specs Grid */}
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-2.5 rounded bg-slate-50 dark:bg-slate-800/60">
-                <span className="text-slate-400 block text-[10px]">Stok Saat Ini</span>
-                <span className="font-mono font-bold text-sm text-slate-900 dark:text-white">
-                  {selectedItem.stok} {satuan.find((s) => s.id === selectedItem.satuan_id)?.nama_satuan}
-                </span>
-              </div>
-              <div className="p-2.5 rounded bg-slate-50 dark:bg-slate-800/60">
-                <span className="text-slate-400 block text-[10px]">Batas Minimum</span>
-                <span className="font-mono font-bold text-sm text-amber-600">
-                  {selectedItem.stok_min}
-                </span>
-              </div>
-              <div className="p-2.5 rounded bg-slate-50 dark:bg-slate-800/60">
-                <span className="text-slate-400 block text-[10px]">Kondisi Fisik</span>
-                <span className="font-semibold text-slate-900 dark:text-white">
-                  {selectedItem.kondisi}
-                </span>
-              </div>
-              <div className="p-2.5 rounded bg-slate-50 dark:bg-slate-800/60">
-                <span className="text-slate-400 block text-[10px]">Lokasi Rak</span>
-                <span className="font-semibold text-slate-900 dark:text-white">
-                  {selectedItem.lokasi_rak}
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-3 p-3 rounded bg-slate-50 dark:bg-slate-800/60 text-xs text-slate-600 dark:text-slate-300">
-              <span className="font-semibold block mb-0.5">Spesifikasi / Catatan:</span>
-              <p>{selectedItem.deskripsi || 'Tidak ada catatan tambahan.'}</p>
-            </div>
-
-            <div className="mt-5 flex justify-end">
-              <button
-                onClick={() => setShowDetailModal(false)}
-                className="px-4 py-2 text-xs font-semibold text-white bg-slate-900 dark:bg-slate-800 rounded-lg hover:bg-slate-800"
-              >
-                Tutup
-              </button>
-            </div>
+                <button onClick={() => setShowDetailModal(false)} className="w-full py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-900 dark:text-white font-bold rounded-2xl transition-all">Tutup Detail</button>
+             </div>
           </div>
         </div>
       )}
 
-      {/* Modal Konfirmasi Hapus Barang */}
+      {/* Modal: Confirm Delete */}
       {itemToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full shadow-2xl overflow-hidden">
-            <div className="p-6 text-center">
-              <div className="w-14 h-14 rounded-full bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 mx-auto flex items-center justify-center mb-4 ring-8 ring-red-50 dark:ring-red-950/20">
-                <Trash2 className="w-7 h-7" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+           <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-sm shadow-2xl p-8 text-center animate-in fade-in zoom-in duration-200">
+              <div className="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                 <Trash2 className="w-10 h-10" />
               </div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Hapus Data Barang?
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
-                Apakah Anda yakin ingin menghapus data inventaris berikut dari database MySQL?
-              </p>
-
-              <div className="mt-4 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-left text-xs space-y-1.5">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Kode SKU:</span>
-                  <span className="font-mono font-bold text-slate-900 dark:text-white">{itemToDelete.kode_barang}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Nama Barang:</span>
-                  <span className="font-semibold text-slate-900 dark:text-white text-right max-w-[200px] truncate">{itemToDelete.nama_barang}</span>
-                </div>
-                {itemToDelete.model && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Model:</span>
-                    <span className="text-slate-700 dark:text-slate-300">{itemToDelete.model}</span>
-                  </div>
-                )}
-                {itemToDelete.serial_number && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Serial Number:</span>
-                    <span className="font-mono text-purple-600 dark:text-purple-400 text-right max-w-[200px] truncate">{itemToDelete.serial_number}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Stok Fisik:</span>
-                  <span className="font-mono font-bold text-orange-600">{itemToDelete.stok} Unit</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Lokasi Rak:</span>
-                  <span className="text-slate-700 dark:text-slate-300">{itemToDelete.lokasi_rak || '-'}</span>
-                </div>
+              <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">Hapus Barang?</h3>
+              <p className="text-xs text-slate-500 mb-8 leading-relaxed">Apakah Anda yakin ingin menghapus <strong>{itemToDelete.nama_barang}</strong>? Tindakan ini tidak dapat dibatalkan.</p>
+              <div className="flex gap-3">
+                 <button onClick={() => setItemToDelete(null)} className="flex-1 py-3 font-bold text-slate-600 bg-slate-100 rounded-2xl">Batal</button>
+                 <button onClick={() => { deleteBarang(itemToDelete.id); setItemToDelete(null); }} className="flex-1 py-3 font-bold text-white bg-red-600 rounded-2xl shadow-lg shadow-red-600/20">Hapus</button>
               </div>
-
-              <p className="text-[11px] text-red-600 dark:text-red-400 mt-3 font-medium">
-                Peringatan: Tindakan ini permanen dan akan menghapus baris data dari tabel `tbl_barang`.
-              </p>
-            </div>
-
-            <div className="px-6 py-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setItemToDelete(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-colors"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Ya, Hapus Barang</span>
-              </button>
-            </div>
-          </div>
+           </div>
         </div>
       )}
     </div>

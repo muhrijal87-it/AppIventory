@@ -68,11 +68,17 @@ export const CodeIgniterSidebar: React.FC<SidebarProps> = ({
           isOpenMobile ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
+        {/* Desktop Sidebar Logo */}
+        <div className="hidden lg:flex items-center gap-3 px-6 h-15 border-b border-slate-800/50">
+          <img src="/assets/inventory_logo_v2.jpg" alt="Logo" className="w-8 h-8 rounded-lg shadow-md" />
+          <span className="font-bold text-white tracking-tight">InvSystem</span>
+        </div>
+
         {/* Mobile Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-800 lg:hidden">
           <div className="flex items-center gap-2">
-            <Flame className="w-5 h-5 text-red-500 fill-current" />
-            <span className="font-bold text-white text-sm">CodeIgniter 4</span>
+            <img src="/assets/inventory_logo_v2.jpg" alt="Logo" className="w-6 h-6 rounded" />
+            <span className="font-bold text-white text-sm">Inventory System</span>
           </div>
           <button
             onClick={onCloseMobile}
@@ -149,6 +155,9 @@ export const CodeIgniterSidebar: React.FC<SidebarProps> = ({
                   <ArrowUpFromLine className="w-4 h-4 text-orange-400" />
                   <span>Barang Keluar (Out)</span>
                 </div>
+                <span className="text-[11px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">
+                  {transaksiKeluar.filter((t) => !t.no_transaksi.startsWith('TRF-')).length}
+                </span>
               </button>
 
               <button
@@ -160,7 +169,7 @@ export const CodeIgniterSidebar: React.FC<SidebarProps> = ({
                   <span>Perpindahan Barang</span>
                 </div>
                 <span className="text-[11px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">
-                  {transaksiKeluar.length}
+                  {transaksiKeluar.filter((t) => t.no_transaksi.startsWith('TRF-')).length}
                 </span>
               </button>
 

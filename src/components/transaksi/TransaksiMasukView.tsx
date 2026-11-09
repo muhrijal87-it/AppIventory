@@ -3,22 +3,41 @@ import {
   ArrowDownToLine,
   Plus,
   Search,
-  Calendar,
   Truck,
   Package,
   Printer,
   X,
   CheckCircle2,
-  FileSpreadsheet,
   Camera,
   Trash2,
   Eye,
   AlertCircle,
-  Image as ImageIcon
+  Image as ImageIcon,
 } from 'lucide-react';
 import { TransaksiMasuk } from '../../types';
 import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
+
+// --- Reusable Form Components ---
+const FormLabel: React.FC<{ children: React.ReactNode; required?: boolean }> = ({ children, required }) => (
+  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+    {children} {required && <span className="text-red-500">*</span>}
+  </label>
+);
+
+const FormInput = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
+  <input
+    {...props}
+    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-hidden"
+  />
+);
+
+const FormSelect = (props: React.SelectHTMLAttributes<HTMLSelectElement>) => (
+  <select
+    {...props}
+    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-hidden"
+  />
+);
 
 export const TransaksiMasukView: React.FC = () => {
   const { transaksiMasuk, barang, supplier, addTransaksiMasuk } = useInventory();
@@ -115,22 +134,20 @@ export const TransaksiMasukView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Banner */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">
-              Transaksi Barang Masuk (Inbound / Restok)
-            </h2>
-          </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Pencatatan pengadaan barang dari supplier, otomatis memperbarui stok fisik, kartu mutasi, dan bukti foto nota.
+          <h2 className="text-lg font-black text-slate-900 dark:text-white">
+            Transaksi Barang Masuk
+          </h2>
+          <p className="text-xs text-slate-500 mt-1">
+            Pencatatan pengadaan barang dari supplier ke stok gudang.
           </p>
         </div>
 
         {can('manage_inventory') && (
           <button
             onClick={handleOpenAdd}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors shrink-0"
+            className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-2xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
           >
             <Plus className="w-4 h-4" />
             <span>Catat Barang Masuk</span>
@@ -138,104 +155,63 @@ export const TransaksiMasukView: React.FC = () => {
         )}
       </div>
 
-      {/* Search Bar */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-xs">
-        <div className="relative max-w-md">
-          <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Cari no faktur, supplier, atau barang..."
-            className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-hidden focus:border-emerald-500"
-          />
-        </div>
-      </div>
-
       {/* Transactions Table */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-xs">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="relative max-w-md">
+            <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Cari faktur, supplier, atau nama barang..."
+              className="w-full pl-10 pr-4 py-2.5 text-xs bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500 transition-all"
+            />
+          </div>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800">
+            <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 font-bold uppercase tracking-widest text-[10px]">
               <tr>
-                <th className="px-4 py-3">No. Faktur</th>
-                <th className="px-4 py-3">Tanggal</th>
-                <th className="px-4 py-3">Pemasok (Supplier)</th>
-                <th className="px-4 py-3">Barang Diterima</th>
-                <th className="px-4 py-3 text-right">Jumlah Masuk</th>
-                <th className="px-4 py-3 text-center">Foto Nota</th>
-                <th className="px-4 py-3">Petugas</th>
-                <th className="px-4 py-3 text-center">Cetak</th>
+                <th className="px-6 py-4">No. Faktur</th>
+                <th className="px-6 py-4">Tanggal</th>
+                <th className="px-6 py-4">Pemasok</th>
+                <th className="px-6 py-4">Barang</th>
+                <th className="px-6 py-4 text-right">Jumlah</th>
+                <th className="px-6 py-4 text-center">Foto Nota</th>
+                <th className="px-6 py-4 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-10 text-center text-slate-400">
-                    Belum ada rekaman transaksi barang masuk yang cocok.
+                  <td colSpan={7} className="py-10 text-center text-slate-400 italic">
+                    Belum ada data transaksi.
                   </td>
                 </tr>
               ) : (
                 filteredTransactions.map((trx) => {
                   const itm = barang.find((b) => b.id === trx.barang_id);
                   const sup = supplier.find((s) => s.id === trx.supplier_id);
-                  const petugas = users.find((u) => u.id === trx.petugas_id);
-
                   return (
                     <tr key={trx.id} className="hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors">
-                      <td className="px-4 py-3 font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
-                        {trx.no_faktur}
+                      <td className="px-6 py-4 font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">{trx.no_faktur}</td>
+                      <td className="px-6 py-4 text-slate-500 font-mono whitespace-nowrap">{trx.tanggal}</td>
+                      <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-200">{sup?.nama_supplier}</td>
+                      <td className="px-6 py-4">
+                        <div className="font-semibold text-slate-900 dark:text-white">{itm?.nama_barang}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">{itm?.kode_barang}</div>
                       </td>
-                      <td className="px-4 py-3 text-slate-500 font-mono whitespace-nowrap">
-                        {trx.tanggal}
-                      </td>
-                      <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                        {sup?.nama_supplier || `Supplier #${trx.supplier_id}`}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="font-semibold text-slate-900 dark:text-white">
-                          {itm?.nama_barang || `Barang #${trx.barang_id}`}
-                        </div>
-                        <div className="text-[11px] text-slate-400 font-mono">
-                          {itm?.kode_barang}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono font-bold text-emerald-600 text-sm whitespace-nowrap">
-                        +{trx.jumlah}
-                      </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                      <td className="px-6 py-4 text-right font-black font-mono text-emerald-600 text-sm">+{trx.jumlah}</td>
+                      <td className="px-6 py-4 text-center">
                         {trx.foto_nota ? (
-                          <button
-                            onClick={() =>
-                              setViewingImage({
-                                title: `Foto Faktur/Nota ${trx.no_faktur}`,
-                                url: trx.foto_nota!,
-                              })
-                            }
-                            className="group relative inline-block p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
-                            title="Klik untuk melihat foto faktur"
-                          >
-                            <img
-                              src={trx.foto_nota}
-                              alt="Nota"
-                              className="w-8 h-8 object-cover rounded border border-slate-200 dark:border-slate-700 shadow-xs group-hover:scale-105 transition-transform"
-                            />
-                          </button>
-                        ) : (
-                          <span className="text-[10px] text-slate-400 italic">Tanpa foto</span>
-                        )}
+                           <button onClick={() => setViewingImage({ title: `Nota ${trx.no_faktur}`, url: trx.foto_nota! })} className="p-1 rounded bg-slate-100 hover:bg-emerald-50 dark:bg-slate-800 dark:hover:bg-emerald-950/40">
+                             <ImageIcon className="w-4 h-4 text-emerald-600" />
+                           </button>
+                        ) : <span className="text-[10px] text-slate-400 italic">No</span>}
                       </td>
-                      <td className="px-4 py-3 text-slate-500 whitespace-nowrap font-mono text-[11px]">
-                        {petugas?.username || 'Staff'}
-                      </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
-                        <button
-                          onClick={() => setSelectedInvoice(trx)}
-                          className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
-                          title="Cetak Bukti Penerimaan Barang"
-                        >
-                          <Printer className="w-4 h-4" />
-                        </button>
+                      <td className="px-6 py-4 text-center">
+                        <button onClick={() => setSelectedInvoice(trx)} className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"><Printer className="w-4 h-4" /></button>
                       </td>
                     </tr>
                   );
@@ -246,339 +222,77 @@ export const TransaksiMasukView: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal: Input Barang Masuk (with Image Upload) */}
+      {/* Modal Add */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl w-full max-w-xl max-h-[92vh] shadow-2xl flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
-              <div className="flex items-center gap-2">
-                <ArrowDownToLine className="w-5 h-5 text-emerald-600" />
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                  Formulir Penerimaan Barang Masuk (Inbound)
-                </h3>
-              </div>
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
-              >
-                <X className="w-4 h-4" />
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-base font-black text-slate-900 dark:text-white">Penerimaan Barang</h3>
+              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600 p-1"><X className="w-5 h-5" /></button>
             </div>
-
-            {validationError && (
-              <div className="mx-6 mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
-                <span>{validationError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs overflow-y-auto scrollbar-thin flex-1">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto scrollbar-thin">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    No. Faktur / Referensi <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={noFaktur}
-                    onChange={(e) => setNoFaktur(e.target.value)}
-                    className="w-full px-3 py-2 font-mono uppercase bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                  />
+                  <FormLabel required>No. Faktur</FormLabel>
+                  <FormInput type="text" value={noFaktur} onChange={(e) => setNoFaktur(e.target.value)} required readOnly />
                 </div>
-
                 <div>
-                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Tanggal Penerimaan <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={tanggal}
-                    onChange={(e) => setTanggal(e.target.value)}
-                    className="w-full px-3 py-2 font-mono bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                  />
+                  <FormLabel required>Tanggal</FormLabel>
+                  <FormInput type="date" value={tanggal} onChange={(e) => setTanggal(e.target.value)} required />
                 </div>
               </div>
-
               <div>
-                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Pemasok (Supplier) <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={supplierId}
-                  onChange={(e) => setSupplierId(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                >
-                  {supplier.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.nama_supplier} ({s.kode_supplier})
-                    </option>
-                  ))}
-                </select>
+                <FormLabel required>Supplier</FormLabel>
+                <FormSelect value={supplierId} onChange={(e) => setSupplierId(Number(e.target.value))} required>
+                  {supplier.map(s => <option key={s.id} value={s.id}>{s.nama_supplier}</option>)}
+                </FormSelect>
               </div>
-
               <div>
-                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Pilih Barang yang Diterima <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={barangId}
-                  onChange={(e) => handleBarangChange(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white font-medium"
-                >
-                  {barang.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.kode_barang} - {b.nama_barang} (Stok Saat Ini: {b.stok})
-                    </option>
-                  ))}
-                </select>
+                <FormLabel required>Barang</FormLabel>
+                <FormSelect value={barangId} onChange={(e) => handleBarangChange(Number(e.target.value))} required>
+                  {barang.map(b => <option key={b.id} value={b.id}>{b.nama_barang} (Stok: {b.stok})</option>)}
+                </FormSelect>
               </div>
-
               <div>
-                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Jumlah Masuk (Kuantitas Fisik) <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  required
-                  value={jumlah}
-                  onChange={(e) => setJumlah(Number(e.target.value))}
-                  className="w-full px-3 py-2 font-mono font-bold text-sm bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-emerald-600"
-                />
+                <FormLabel required>Jumlah</FormLabel>
+                <FormInput type="number" min="1" value={jumlah} onChange={(e) => setJumlah(Number(e.target.value))} required />
               </div>
-
               <div>
-                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Catatan / Keterangan
-                </label>
+                <FormLabel>Catatan</FormLabel>
                 <textarea
                   rows={2}
                   value={catatan}
                   onChange={(e) => setCatatan(e.target.value)}
-                  placeholder="Contoh: Pengadaan batch 1 untuk persiapan operasional..."
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-emerald-500/20 transition-all outline-hidden"
                 />
               </div>
-
-              {/* INPUT GAMBAR / FOTO FAKTUR PEMBELIAN */}
-              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 space-y-2">
-                <label className="block font-semibold text-slate-800 dark:text-slate-200">
-                  Foto Bukti Faktur / Nota Penerimaan Barang Fisik
+              {/* Photo Input (Redesign) */}
+              <div className="p-4 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                <FormLabel>Foto Bukti</FormLabel>
+                <label className="flex items-center gap-3 cursor-pointer mt-2 hover:opacity-80">
+                  <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-emerald-600">
+                    {fotoNota ? <img src={fotoNota} className="w-full h-full object-cover rounded-xl" /> : <Camera className="w-5 h-5" />}
+                  </div>
+                  <span className="text-xs font-bold text-slate-500">{fotoNota ? 'Ganti Foto' : 'Pilih Foto...'}</span>
+                  <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
                 </label>
-                <p className="text-[11px] text-slate-500">
-                  Unggah foto nota supplier, kuitansi, atau resi pengiriman sebagai bukti audit akuntansi.
-                </p>
-
-                {fotoNota ? (
-                  <div className="relative mt-2 p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center gap-3">
-                    <img
-                      src={fotoNota}
-                      alt="Preview Faktur"
-                      className="w-16 h-16 object-cover rounded-md border border-slate-200 dark:border-slate-700 shrink-0 cursor-pointer"
-                      onClick={() => setViewingImage({ title: 'Preview Foto Faktur', url: fotoNota })}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold text-xs">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Foto Berhasil Dimuat</span>
-                      </div>
-                      <p className="text-[10px] text-slate-400 mt-0.5">
-                        Tersimpan dalam database rekaman transaksi (base64 string).
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setViewingImage({ title: 'Preview Foto Faktur', url: fotoNota })}
-                        className="p-1.5 rounded text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                        title="Lihat ukuran penuh"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFotoNota('')}
-                        className="p-1.5 rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
-                        title="Hapus foto"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-2">
-                    <label className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 rounded-xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors bg-white dark:bg-slate-900">
-                      <div className="w-9 h-9 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                        <Camera className="w-4 h-4" />
-                      </div>
-                      <div className="text-center">
-                        <span className="font-semibold text-emerald-600 dark:text-emerald-400 hover:underline">
-                          Klik untuk memilih foto nota/faktur
-                        </span>
-                        <span className="text-slate-500 text-[11px] block mt-0.5">
-                          Atau seret file gambar langsung ke sini (Maks. 2 MB)
-                        </span>
-                      </div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
-                )}
               </div>
-
-              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-lg"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors"
-                >
-                  Simpan Transaksi Masuk
-                </button>
-              </div>
+              <button type="submit" className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl transition-all active:scale-95">Simpan</button>
             </form>
           </div>
         </div>
       )}
 
-      {/* Lightbox / Image Viewer Modal */}
+      {/* Lightbox / Image Viewer */}
       {viewingImage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-2xl w-full p-4 text-white shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3 text-xs">
-              <span className="font-semibold">{viewingImage.title}</span>
-              <button
-                onClick={() => setViewingImage(null)}
-                className="text-slate-400 hover:text-white p-1"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex justify-center items-center max-h-[70vh] overflow-hidden rounded-lg bg-black/40">
-              <img
-                src={viewingImage.url}
-                alt="Full View"
-                className="max-h-[68vh] max-w-full object-contain rounded"
-              />
-            </div>
-            <div className="flex justify-end pt-3 mt-2 border-t border-slate-800">
-              <button
-                onClick={() => setViewingImage(null)}
-                className="px-4 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-200"
-              >
-                Tutup
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Invoice Receipt Print Preview Modal */}
-      {selectedInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white text-slate-900 rounded-xl w-full max-w-lg p-6 shadow-2xl text-xs print:p-0 print:shadow-none max-h-[90vh] overflow-y-auto">
-            {/* Invoice Header */}
-            <div className="flex justify-between items-start border-b pb-4">
-              <div>
-                <h2 className="text-base font-bold text-slate-900">BUKTI PENERIMAAN BARANG</h2>
-                <p className="text-[11px] text-slate-500">Sistem Inventaris CodeIgniter &amp; MySQL</p>
-              </div>
-              <div className="text-right">
-                <span className="font-mono font-bold text-sm text-red-600">{selectedInvoice.no_faktur}</span>
-                <p className="text-[11px] text-slate-500">{selectedInvoice.tanggal}</p>
-              </div>
-            </div>
-
-            {/* Invoice Meta */}
-            <div className="grid grid-cols-2 gap-4 py-4 border-b text-[11px]">
-              <div>
-                <span className="text-slate-400 block">Pemasok / Supplier:</span>
-                <span className="font-bold text-slate-800">
-                  {supplier.find((s) => s.id === selectedInvoice.supplier_id)?.nama_supplier}
-                </span>
-                <p className="text-slate-500">{supplier.find((s) => s.id === selectedInvoice.supplier_id)?.alamat}</p>
-              </div>
-              <div>
-                <span className="text-slate-400 block">Diterima Oleh:</span>
-                <span className="font-bold text-slate-800">Bagian Gudang &amp; Logistik</span>
-                <p className="text-slate-500">Kondisi: Sesuai Purchase Order</p>
-              </div>
-            </div>
-
-            {/* Item Table */}
-            <div className="py-4">
-              <table className="w-full text-left text-[11px]">
-                <thead className="bg-slate-100 font-semibold">
-                  <tr>
-                    <th className="p-2">Item Barang</th>
-                    <th className="p-2 text-right">Jumlah (Qty Fisik)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b">
-                    <td className="p-2 font-medium">
-                      {barang.find((b) => b.id === selectedInvoice.barang_id)?.nama_barang}
-                    </td>
-                    <td className="p-2 text-right font-mono font-bold text-emerald-600">
-                      +{selectedInvoice.jumlah}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            {/* Attached Photo if present */}
-            {selectedInvoice.foto_nota && (
-              <div className="my-3 p-3 rounded-lg border border-slate-200 bg-slate-50">
-                <span className="font-bold text-[11px] text-slate-700 block mb-1.5">
-                  Lampiran Foto Faktur / Nota Pembelian:
-                </span>
-                <img
-                  src={selectedInvoice.foto_nota}
-                  alt="Lampiran Nota"
-                  className="max-h-40 w-auto rounded border border-slate-300 object-contain mx-auto"
-                />
-              </div>
-            )}
-
-            {/* Signatures */}
-            <div className="grid grid-cols-2 gap-8 pt-6 pb-4 text-center text-[11px]">
-              <div>
-                <div className="text-slate-500 mb-12">Petugas Pengirim</div>
-                <div className="border-t border-slate-300 pt-1 font-semibold">( Supplier PIC )</div>
-              </div>
-              <div>
-                <div className="text-slate-500 mb-12">Petugas Penerima</div>
-                <div className="border-t border-slate-300 pt-1 font-semibold">( Petugas Gudang )</div>
-              </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="flex justify-end gap-2 pt-4 border-t no-print">
-              <button
-                onClick={() => setSelectedInvoice(null)}
-                className="px-4 py-1.5 text-xs bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700"
-              >
-                Tutup
-              </button>
-              <button
-                onClick={() => window.print()}
-                className="px-4 py-1.5 text-xs bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg flex items-center gap-1.5 shadow-xs"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>Cetak Nota</span>
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setViewingImage(null)}>
+          <div className="relative max-w-4xl w-full flex flex-col items-center" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setViewingImage(null)} className="absolute -top-12 right-0 p-2 text-white hover:text-slate-300">
+               <X className="w-6 h-6" />
+            </button>
+            <div className="bg-white dark:bg-slate-900 p-2 rounded-3xl shadow-2xl overflow-hidden">
+               <img src={viewingImage.url} alt={viewingImage.title} className="max-h-[80vh] w-auto rounded-2xl" />
+               <div className="p-4 text-center font-bold text-slate-900 dark:text-white">{viewingImage.title}</div>
             </div>
           </div>
         </div>
