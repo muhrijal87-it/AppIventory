@@ -18,6 +18,7 @@ import {
   ArrowRightLeft,
   Package,
   RotateCcw,
+  Edit,
   Undo2,
 } from 'lucide-react';
 import { TransaksiKeluar } from '../../types';
@@ -55,6 +56,8 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
 
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editItem, setEditItem] = useState<TransaksiKeluar | null>(null);
   const [selectedDO, setSelectedDO] = useState<TransaksiKeluar | null>(null);
   const [validationError, setValidationError] = useState('');
   const [viewingImage, setViewingImage] = useState<{ title: string; url: string } | null>(null);
@@ -375,6 +378,44 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
     }
   };
 
+  const handleOpenEdit = (trx: TransaksiKeluar) => {
+    setEditItem(trx);
+    setNoTransaksi(trx.no_transaksi);
+    setTanggal(trx.tanggal);
+    setPenerima(trx.penerima);
+    setDepartemen(trx.departemen);
+    setBarangId(trx.barang_id);
+    setJumlah(trx.jumlah);
+    setModel(trx.model || '');
+    setSerialNumber(trx.serial_number || '');
+    setKeperluan(trx.keperluan);
+    setFotoBukti(trx.foto_bukti || '');
+    setValidationError('');
+    setShowEditModal(true);
+  };
+
+  const handleSubmitEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editItem) return;
+
+    const res = updateTransaksiKeluar(editItem.id, {
+      penerima: penerima.trim(),
+      departemen: departemen.trim(),
+      jumlah: Number(jumlah),
+      model: model.trim() || undefined,
+      serial_number: serialNumber.trim() || undefined,
+      keperluan: keperluan.trim(),
+      foto_bukti: fotoBukti || undefined,
+    });
+
+    if (res) {
+      setShowEditModal(false);
+      setEditItem(null);
+    } else {
+      setValidationError('Gagal memperbarui transaksi.');
+    }
+  };
+
   const handleExecuteRecall = (e: React.FormEvent) => {
     e.preventDefault();
     if (!recallModalItem) return;
@@ -606,6 +647,13 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
                       <td className="px-6 py-4 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-2">
                           <button
+                            onClick={() => handleOpenEdit(trx)}
+                            className="p-1.5 rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-100 dark:text-blue-400 dark:bg-blue-950/60 border border-blue-100 dark:border-blue-900 transition-all active:scale-90"
+                            title="Edit Transaksi"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => handleOpenTransferModal(trx)}
                             className="p-1.5 rounded-lg text-purple-600 bg-purple-50 hover:bg-purple-100 dark:text-purple-400 dark:bg-purple-950/60 border border-purple-100 dark:border-purple-900 transition-all active:scale-90"
                             title="Pindah Barang"
@@ -810,6 +858,72 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
               </div>
 
               <button type="submit" className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-2xl shadow-lg shadow-orange-600/20 transition-all active:scale-95">Simpan Transaksi</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Transaksi */}
+      {showEditModal && editItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-base font-black text-slate-900 dark:text-white">Edit Transaksi Keluar</h3>
+              <button onClick={() => setShowEditModal(false)} className="text-slate-400 hover:text-slate-600 p-1"><X className="w-5 h-5" /></button>
+            </div>
+            
+            {validationError && (
+              <div className="mx-6 mt-4">
+                <PillNotification
+                  type="error"
+                  title="Gagal Update"
+                  message={validationError}
+                  onClose={() => setValidationError('')}
+                />
+              </div>
+            )}
+
+            <form onSubmit={handleSubmitEdit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto scrollbar-thin">
+              <div>
+                <FormLabel>Penerima / PIC Baru</FormLabel>
+                <FormInput type="text" required value={penerima} onChange={(e) => setPenerima(e.target.value)} />
+              </div>
+
+              <div>
+                <FormLabel>Departemen</FormLabel>
+                <FormSelect value={departemen} onChange={(e) => setDepartemen(e.target.value)} required>
+                  {departemenList.map(d => <option key={d} value={d}>{d}</option>)}
+                </FormSelect>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <FormLabel>Jumlah</FormLabel>
+                  <FormInput type="number" min="1" required value={jumlah} onChange={(e) => setJumlah(Number(e.target.value))} />
+                </div>
+                <div>
+                   <FormLabel>Model / Tipe</FormLabel>
+                   <FormInput type="text" value={model} onChange={(e) => setModel(e.target.value)} />
+                </div>
+              </div>
+
+              <div>
+                 <FormLabel>Serial Number</FormLabel>
+                 <FormInput type="text" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} />
+              </div>
+
+              <div>
+                <FormLabel>Keperluan</FormLabel>
+                <textarea
+                  rows={2}
+                  required
+                  value={keperluan}
+                  onChange={(e) => setKeperluan(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-orange-500/20 transition-all outline-hidden"
+                />
+              </div>
+
+              <button type="submit" className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-600/20 transition-all active:scale-95">Simpan Perubahan</button>
             </form>
           </div>
         </div>
