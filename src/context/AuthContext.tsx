@@ -9,6 +9,7 @@ export type AppPermission =
   | 'backup_db'
   | 'query_db'
   | 'manage_inventory'
+  | 'manage_transactions'
   | 'delete_inventory'
   | 'manage_master_data'
   | 'delete_master_data'
@@ -226,6 +227,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (user.role === 'staff') {
       switch (action) {
         case 'manage_inventory':   // Inbound, Outbound, Transfer, Add/Edit Item
+        case 'manage_transactions':
         case 'manage_master_data': // Add/Edit Category, Departemen, Satuan, Supplier
         case 'view_reports':       // View Stock position and transactions
           return true;
