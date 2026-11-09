@@ -58,10 +58,6 @@ export const BarangListView: React.FC = () => {
   const { barang, kategori, satuan, addBarang, updateBarang, deleteBarang, reloadState } = useInventory();
   const { can } = useAuth();
 
-  const handleRestoreSeedData = () => {
-    mysql.resetDatabase(true);
-    reloadState();
-  };
 
   // Filters & Search
   const [searchTerm, setSearchTerm] = useState('');
@@ -353,7 +349,6 @@ export const BarangListView: React.FC = () => {
                        <div className="flex flex-col items-center gap-3">
                           <Package className="w-12 h-12 text-slate-100 dark:text-slate-800" />
                           <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Katalog Kosong</p>
-                          {barang.length === 0 && <button onClick={handleRestoreSeedData} className="text-[10px] font-black text-red-500 underline underline-offset-4">MUAT DATA DEMO</button>}
                        </div>
                     </td>
                   </tr>
