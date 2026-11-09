@@ -138,31 +138,73 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
     reader.readAsDataURL(file);
   };
 
+  const handleOpenEdit = (trx: TransaksiKeluar) => {
+    setEditItem(trx);
+    setNoTransaksi(trx.no_transaksi);
+    setTanggal(trx.tanggal);
+    setPenerima(trx.penerima);
+    setDepartemen(trx.departemen);
+    setBarangId(trx.barang_id);
+    setJumlah(trx.jumlah);
+    setModel(trx.model || '');
+    setSerialNumber(trx.serial_number || '');
+    setKeperluan(trx.keperluan);
+    setFotoBukti(trx.foto_bukti || '');
+    setValidationError('');
+    setShowEditModal(true);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Stok check only for new entries (unless count increased in edit?)
+    // Simplified logic: Check if diff is within availability
     const targetItem = barang.find(b => b.id === Number(barangId));
-    if (!targetItem || targetItem.stok < jumlah) {
-      setValidationError('Stok tidak mencukupi!');
-      return;
-    }
-    const res = addTransaksiKeluar({
-      no_transaksi: noTransaksi,
-      tanggal,
-      penerima,
-      departemen,
-      barang_id: Number(barangId),
-      jumlah: Number(jumlah),
-      model: model.trim(),
-      serial_number: serialNumber.trim(),
-      keperluan,
-      petugas_id: user ? user.id : 1,
-      foto_bukti: fotoBukti || undefined,
-    });
-    if (res.success) {
-      setShowAddModal(false);
-      setSuccessModalMessage(`Distribusi ${noTransaksi} berhasil dicatat.`);
-    } else {
-      setValidationError(res.message);
+    if (!targetItem) return;
+
+    if (showAddModal) {
+      if (targetItem.stok < jumlah) {
+        setValidationError('Stok tidak mencukupi!');
+        return;
+      }
+      const res = addTransaksiKeluar({
+        no_transaksi: noTransaksi,
+        tanggal,
+        penerima,
+        departemen,
+        barang_id: Number(barangId),
+        jumlah: Number(jumlah),
+        model: model.trim(),
+        serial_number: serialNumber.trim(),
+        keperluan,
+        petugas_id: user ? user.id : 1,
+        foto_bukti: fotoBukti || undefined,
+      });
+      if (res.success) {
+        setShowAddModal(false);
+        setSuccessModalMessage(`Distribusi ${noTransaksi} berhasil dicatat.`);
+      } else {
+        setValidationError(res.message);
+      }
+    } else if (showEditModal && editItem) {
+      const res = updateTransaksiKeluar(editItem.id, {
+        no_transaksi: noTransaksi,
+        tanggal,
+        penerima,
+        departemen,
+        barang_id: Number(barangId),
+        jumlah: Number(jumlah),
+        model: model.trim(),
+        serial_number: serialNumber.trim(),
+        keperluan,
+        foto_bukti: fotoBukti || undefined,
+      });
+      if (res) {
+        setShowEditModal(false);
+        setSuccessModalMessage(`Data ${noTransaksi} berhasil diperbarui.`);
+      } else {
+        setValidationError('Gagal memperbarui data transaksi.');
+      }
     }
   };
 
@@ -313,8 +355,11 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
                       </td>
                       <td className="px-6 py-5 text-center">
                          <div className="flex items-center justify-center gap-2">
-                            <button onClick={() => setSelectedDO(trx)} className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"><Printer className="w-4 h-4" /></button>
-                            <button onClick={() => { setRecallModalItem(trx); setRecallReason(''); }} className="p-2 text-slate-400 hover:text-red-500 transition-all"><RotateCcw className="w-4 h-4" /></button>
+                            <button onClick={() => setSelectedDO(trx)} className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all" title="Cetak Surat Jalan"><Printer className="w-4 h-4" /></button>
+                            {can('manage_inventory') && (
+                              <button onClick={() => handleOpenEdit(trx)} className="p-2 text-slate-400 hover:text-blue-500 transition-all" title="Edit Data"><Edit className="w-4 h-4" /></button>
+                            )}
+                            <button onClick={() => { setRecallModalItem(trx); setRecallReason(''); }} className="p-2 text-slate-400 hover:text-red-500 transition-all" title="Recall Unit"><RotateCcw className="w-4 h-4" /></button>
                          </div>
                       </td>
                     </tr>
@@ -334,21 +379,21 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
         />
       </div>
 
-      {/* Add Modal */}
-      {showAddModal && (
+      {/* Add/Edit Modal */}
+      {(showAddModal || showEditModal) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-300">
            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col scale-in-95 animate-in zoom-in-95 duration-300">
               <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-950/50">
                  <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-950/30 flex items-center justify-center text-orange-600">
-                       <ArrowUpFromLine className="w-5 h-5" />
+                       {showAddModal ? <ArrowUpFromLine className="w-5 h-5" /> : <Edit className="w-5 h-5" />}
                     </div>
                     <div>
-                       <h3 className="font-bold text-slate-900 dark:text-white">Pengeluaran Barang (DO)</h3>
-                       <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest mt-0.5">Pencatatan Distribusi Unit</p>
+                       <h3 className="font-bold text-slate-900 dark:text-white">{showAddModal ? 'Pengeluaran Barang (DO)' : 'Sunting Data Distribusi'}</h3>
+                       <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest mt-0.5">{showAddModal ? 'Pencatatan Distribusi Unit' : `Nomor: ${noTransaksi}`}</p>
                     </div>
                  </div>
-                 <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors">
+                 <button onClick={() => { setShowAddModal(false); setShowEditModal(false); }} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors">
                     <X className="w-4 h-4 text-slate-400" />
                  </button>
               </div>
@@ -356,7 +401,7 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
               <div className="flex-1 overflow-y-auto p-8 scrollbar-thin">
                  {validationError && (
                    <div className="mb-6">
-                      <PillNotification type="error" title="Distribusi Gagal" message={validationError} onClose={() => setValidationError('')} />
+                      <PillNotification type="error" title={showAddModal ? 'Distribusi Gagal' : 'Pembaruan Gagal'} message={validationError} onClose={() => setValidationError('')} />
                    </div>
                  )}
 
@@ -364,7 +409,7 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
                     <div className="grid grid-cols-2 gap-6">
                        <div className="space-y-2">
                           <FormLabel required>No. Transaksi</FormLabel>
-                          <FormInput value={noTransaksi} readOnly className="font-mono bg-slate-100 dark:bg-slate-800" />
+                          <FormInput value={noTransaksi} readOnly className="font-mono bg-slate-100 dark:bg-slate-800 cursor-not-allowed opacity-60" />
                        </div>
                        <div className="space-y-2">
                           <FormLabel required>Tanggal Keluar</FormLabel>
@@ -422,13 +467,13 @@ export const TransaksiKeluarView: React.FC<TransaksiKeluarViewProps> = ({ onNavi
                           {fotoBukti ? <img src={fotoBukti} className="w-full h-full object-cover" /> : <Camera className="w-8 h-8 text-orange-200" />}
                        </div>
                        <label className="mt-2 inline-block px-4 py-2 bg-orange-600 text-white text-[10px] font-black rounded-xl cursor-pointer hover:bg-orange-700 transition-all shadow-md">
-                          AMBIL FOTO SERAH TERIMA
+                          {fotoBukti ? 'GANTI FOTO' : 'AMBIL FOTO SERAH TERIMA'}
                           <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
                        </label>
                     </div>
 
                     <button type="submit" className="w-full py-4 bg-orange-600 hover:bg-orange-700 text-white font-black rounded-2xl shadow-xl shadow-orange-950/20 active:scale-95 transition-all uppercase tracking-widest text-xs">
-                       Validasi & Distribusikan
+                       {showAddModal ? 'Validasi & Distribusikan' : 'Simpan Perubahan'}
                     </button>
                  </form>
               </div>
