@@ -566,6 +566,40 @@ export const DashboardView: React.FC<DashboardProps> = ({ onNavigate, onOpenMVCM
             </div>
           </div>
         </div>
+        {/* Barang Table */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs">
+          <h3 className="text-sm font-black text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+            <Package className="w-4 h-4 text-red-600" />
+            Daftar Seluruh Barang
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="text-slate-400 font-bold uppercase text-[9px] tracking-widest border-b border-slate-100 dark:border-slate-800">
+                <tr>
+                  <th className="px-4 py-3">Kode</th>
+                  <th className="px-4 py-3">Nama Barang</th>
+                  <th className="px-4 py-3">Kategori</th>
+                  <th className="px-4 py-3 text-right">Stok</th>
+                  <th className="px-4 py-3">Lokasi Rak</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {barang.map((b) => {
+                  const kat = kategori.find((k) => k.id === b.kategori_id);
+                  return (
+                    <tr key={b.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                      <td className="px-4 py-3 font-mono font-bold text-slate-700 dark:text-slate-300">{b.kode_barang}</td>
+                      <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{b.nama_barang}</td>
+                      <td className="px-4 py-3 text-slate-500">{kat?.nama_kategori || '-'}</td>
+                      <td className="px-4 py-3 text-right font-black font-mono text-slate-900 dark:text-white">{b.stok}</td>
+                      <td className="px-4 py-3 text-slate-500">{b.lokasi_rak}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </section>
     </div>
   );
