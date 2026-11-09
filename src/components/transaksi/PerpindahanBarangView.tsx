@@ -463,7 +463,7 @@ export const PerpindahanBarangView: React.FC<PerpindahanBarangViewProps> = ({ on
                                 <div className="font-bold">{barang.find(b=>b.id===selectedSuratJalan.barang_id)?.nama_barang}</div>
                                 <div className="text-[11px] text-slate-500 font-mono mt-1">{barang.find(b=>b.id===selectedSuratJalan.barang_id)?.kode_barang} {selectedSuratJalan.serial_number && ` · SN: ${selectedSuratJalan.serial_number}`}</div>
                              </td>
-                             <td className="px-6 py-4 text-right font-black text-lg">{selectedSuratJalan.jumlah} <span className="text-xs font-medium text-slate-400">Unit</span></td>
+                             <td className="px-6 py-4 text-right font-black text-lg">{selectedSuratJalan.jumlah} <span className="text-xs font-bold text-slate-400 uppercase ml-1">Unit</span></td>
                           </tr>
                        </tbody>
                     </table>

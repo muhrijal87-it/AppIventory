@@ -552,7 +552,9 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ type = 'stok' }) => {
               <tfoot>
                 <tr className="bg-slate-50 dark:bg-slate-900 border-t-2 border-slate-900 dark:border-slate-200">
                   <td colSpan={activeReport === 'stok' ? 3 : 4} className="px-4 py-3 text-xs font-black text-slate-900 dark:text-white uppercase text-right">Total Akumulasi</td>
-                  <td className="px-4 py-3 text-sm font-black text-slate-900 dark:text-white text-right tabular-nums underline decoration-2 underline-offset-4">{kpis.units} Unit</td>
+                  <td className="px-4 py-3 text-sm font-black text-slate-900 dark:text-white text-right tabular-nums underline decoration-2 underline-offset-4 whitespace-nowrap">
+                    {kpis.units} <span className="text-[10px] font-bold text-slate-400 uppercase no-underline inline-block ml-1">Unit</span>
+                  </td>
                   <td className="px-4 py-3"></td>
                 </tr>
               </tfoot>
