@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Layers,
   Ruler,
@@ -13,11 +13,22 @@ import {
   MapPin,
   FolderPlus,
   UserCheck,
-  Building
+  Building,
+  Search,
+  Filter,
+  ArrowRight,
+  MoreVertical,
+  ExternalLink,
+  ChevronRight,
+  Info,
+  Hash,
+  Activity,
+  AlertCircle
 } from 'lucide-react';
 import { Kategori, Satuan, Supplier, Departemen } from '../../types';
 import { useInventory } from '../../context/InventoryContext';
 import { useAuth } from '../../context/AuthContext';
+import { Pagination } from '../common/Pagination';
 
 export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'supplier' | 'departemen' }> = ({
   initialTab = 'kategori',
@@ -47,6 +58,7 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
   const [activeTab, setActiveTab] = useState<'kategori' | 'satuan' | 'supplier' | 'departemen'>(
     initialTab || 'kategori'
   );
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Sync active tab if initialTab prop changes
   useEffect(() => {
@@ -55,20 +67,18 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
     }
   }, [initialTab]);
 
-  // Kategori Modal & Form
+  // Modals & Form States
   const [showKatModal, setShowKatModal] = useState(false);
   const [editingKat, setEditingKat] = useState<Kategori | null>(null);
   const [katKode, setKatKode] = useState('');
   const [katNama, setKatNama] = useState('');
   const [katDeskripsi, setKatDeskripsi] = useState('');
 
-  // Satuan Modal & Form
   const [showSatModal, setShowSatModal] = useState(false);
   const [editingSat, setEditingSat] = useState<Satuan | null>(null);
   const [satKode, setSatKode] = useState('');
   const [satNama, setSatNama] = useState('');
 
-  // Supplier Modal & Form
   const [showSupModal, setShowSupModal] = useState(false);
   const [editingSup, setEditingSup] = useState<Supplier | null>(null);
   const [supKode, setSupKode] = useState('');
@@ -78,7 +88,6 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
   const [supEmail, setSupEmail] = useState('');
   const [supAlamat, setSupAlamat] = useState('');
 
-  // Departemen Modal & Form
   const [showDeptModal, setShowDeptModal] = useState(false);
   const [editingDept, setEditingDept] = useState<Departemen | null>(null);
   const [deptKode, setDeptKode] = useState('');
@@ -87,7 +96,6 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
   const [deptLokasi, setDeptLokasi] = useState('');
   const [deptKeterangan, setDeptKeterangan] = useState('');
 
-  // Delete confirmation modal state
   const [deleteConfirm, setDeleteConfirm] = useState<{
     type: 'kategori' | 'satuan' | 'supplier' | 'departemen';
     id: number;
@@ -103,7 +111,7 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
     setDeleteConfirm(null);
   };
 
-  // KATEGORI HANDLERS
+  // Handlers for Add/Edit
   const openAddKategori = () => {
     setEditingKat(null);
     setKatKode(`KAT-${kategori.length + 1}`);
@@ -120,26 +128,27 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
     setShowKatModal(true);
   };
 
-  const handleKatSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!katNama.trim()) return;
-    if (editingKat) {
-      updateKategori(editingKat.id, {
-        kode_kategori: katKode.toUpperCase(),
-        nama_kategori: katNama,
-        deskripsi: katDeskripsi,
-      });
-    } else {
-      addKategori({
-        kode_kategori: katKode.toUpperCase(),
-        nama_kategori: katNama,
-        deskripsi: katDeskripsi,
-      });
-    }
-    setShowKatModal(false);
+  const openAddDepartemen = () => {
+    setEditingDept(null);
+    const seq = (departemen?.length || 0) + 1;
+    setDeptKode(`DPT-${String(seq).padStart(2, '0')}`);
+    setDeptNama('');
+    setDeptPic('');
+    setDeptLokasi('');
+    setDeptKeterangan('');
+    setShowDeptModal(true);
   };
 
-  // SATUAN HANDLERS
+  const openEditDepartemen = (d: Departemen) => {
+    setEditingDept(d);
+    setDeptKode(d.kode_departemen);
+    setDeptNama(d.nama_departemen);
+    setDeptPic(d.penanggung_jawab || '');
+    setDeptLokasi(d.lokasi_gedung || '');
+    setDeptKeterangan(d.keterangan || '');
+    setShowDeptModal(true);
+  };
+
   const openAddSatuan = () => {
     setEditingSat(null);
     setSatKode('');
@@ -154,24 +163,6 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
     setShowSatModal(true);
   };
 
-  const handleSatSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!satNama.trim()) return;
-    if (editingSat) {
-      updateSatuan(editingSat.id, {
-        kode_satuan: satKode.toUpperCase(),
-        nama_satuan: satNama,
-      });
-    } else {
-      addSatuan({
-        kode_satuan: satKode.toUpperCase(),
-        nama_satuan: satNama,
-      });
-    }
-    setShowSatModal(false);
-  };
-
-  // SUPPLIER HANDLERS
   const openAddSupplier = () => {
     setEditingSup(null);
     const seq = supplier.length + 1;
@@ -195,758 +186,513 @@ export const MasterDataView: React.FC<{ initialTab?: 'kategori' | 'satuan' | 'su
     setShowSupModal(true);
   };
 
-  const handleSupSubmit = (e: React.FormEvent) => {
+  // Submit Handlers
+  const handleKatSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!supNama.trim()) return;
-    if (editingSup) {
-      updateSupplier(editingSup.id, {
-        kode_supplier: supKode.toUpperCase(),
-        nama_supplier: supNama,
-        kontak_pic: supPic,
-        no_telepon: supTelp,
-        email: supEmail,
-        alamat: supAlamat,
-      });
-    } else {
-      addSupplier({
-        kode_supplier: supKode.toUpperCase(),
-        nama_supplier: supNama,
-        kontak_pic: supPic,
-        no_telepon: supTelp,
-        email: supEmail,
-        alamat: supAlamat,
-      });
-    }
-    setShowSupModal(false);
-  };
-
-  // DEPARTEMEN HANDLERS
-  const openAddDepartemen = () => {
-    setEditingDept(null);
-    const seq = (departemen?.length || 0) + 1;
-    setDeptKode(`DPT-${String(seq).padStart(2, '0')}`);
-    setDeptNama('');
-    setDeptPic('');
-    setDeptLokasi('');
-    setDeptKeterangan('');
-    setShowDeptModal(true);
-  };
-
-  const openEditDepartemen = (d: Departemen) => {
-    setEditingDept(d);
-    setDeptKode(d.kode_departemen);
-    setDeptNama(d.nama_departemen);
-    setDeptPic(d.penanggung_jawab || '');
-    setDeptLokasi(d.lokasi_gedung || '');
-    setDeptKeterangan(d.keterangan || '');
-    setShowDeptModal(true);
+    if (editingKat) updateKategori(editingKat.id, { kode_kategori: katKode.toUpperCase(), nama_kategori: katNama, deskripsi: katDeskripsi });
+    else addKategori({ kode_kategori: katKode.toUpperCase(), nama_kategori: katNama, deskripsi: katDeskripsi });
+    setShowKatModal(false);
   };
 
   const handleDeptSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!deptNama.trim()) return;
-    if (editingDept) {
-      updateDepartemen(editingDept.id, {
-        kode_departemen: deptKode.toUpperCase(),
-        nama_departemen: deptNama.trim(),
-        penanggung_jawab: deptPic.trim(),
-        lokasi_gedung: deptLokasi.trim(),
-        keterangan: deptKeterangan.trim(),
-      });
-    } else {
-      addDepartemen({
-        kode_departemen: deptKode.toUpperCase(),
-        nama_departemen: deptNama.trim(),
-        penanggung_jawab: deptPic.trim(),
-        lokasi_gedung: deptLokasi.trim(),
-        keterangan: deptKeterangan.trim(),
-      });
-    }
+    const data = { kode_departemen: deptKode.toUpperCase(), nama_departemen: deptNama, penanggung_jawab: deptPic, lokasi_gedung: deptLokasi, keterangan: deptKeterangan };
+    if (editingDept) updateDepartemen(editingDept.id, data);
+    else addDepartemen(data);
     setShowDeptModal(false);
   };
 
+  const handleSatSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingSat) updateSatuan(editingSat.id, { kode_satuan: satKode.toUpperCase(), nama_satuan: satNama });
+    else addSatuan({ kode_satuan: satKode.toUpperCase(), nama_satuan: satNama });
+    setShowSatModal(false);
+  };
+
+  const handleSupSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const data = { kode_supplier: supKode.toUpperCase(), nama_supplier: supNama, kontak_pic: supPic, no_telepon: supTelp, email: supEmail, alamat: supAlamat };
+    if (editingSup) updateSupplier(editingSup.id, data);
+    else addSupplier(data);
+    setShowSupModal(false);
+  };
+
+  // Filtered Data Logic
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+
+  const filteredData = useMemo(() => {
+    const s = searchTerm.toLowerCase();
+    if (activeTab === 'kategori') return kategori.filter(k => k.nama_kategori.toLowerCase().includes(s) || k.kode_kategori.toLowerCase().includes(s));
+    if (activeTab === 'departemen') return (departemen || []).filter(d => d.nama_departemen.toLowerCase().includes(s) || d.kode_departemen.toLowerCase().includes(s));
+    if (activeTab === 'satuan') return satuan.filter(s_ => s_.nama_satuan.toLowerCase().includes(s) || s_.kode_satuan.toLowerCase().includes(s));
+    if (activeTab === 'supplier') return supplier.filter(sup => sup.nama_supplier.toLowerCase().includes(s) || sup.kode_supplier.toLowerCase().includes(s));
+    return [];
+  }, [activeTab, searchTerm, kategori, departemen, satuan, supplier]);
+
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredData.slice(start, start + itemsPerPage);
+  }, [filteredData, currentPage, itemsPerPage]);
+
+  // Reset page on search or tab change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, activeTab]);
+
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Top Banner */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">
-            Pengelolaan Master Data Inventaris
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Konfigurasi tabel referensi kategori produk, divisi/departemen kerja, satuan unit, dan rekanan supplier.
+    <div className="space-y-8 max-w-7xl mx-auto pb-12 animate-in fade-in duration-500">
+      {/* Page Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wider">
+            <Building className="w-3.5 h-3.5" />
+            <span>Master Registry</span>
+          </div>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
+            Master Data System
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl">
+            Kelola data referensi utama aplikasi untuk memastikan konsistensi inventaris, alur distribusi, dan manajemen pemasok.
           </p>
         </div>
 
         {can('manage_master_data') && (
-          <div className="flex items-center gap-2">
-            {activeTab === 'kategori' && (
-              <button
-                onClick={openAddKategori}
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-xs transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Tambah Kategori</span>
-              </button>
-            )}
-            {activeTab === 'departemen' && (
-              <button
-                onClick={openAddDepartemen}
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-xs transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Tambah Departemen / Divisi</span>
-              </button>
-            )}
-            {activeTab === 'satuan' && (
-              <button
-                onClick={openAddSatuan}
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-xs transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Tambah Satuan</span>
-              </button>
-            )}
-            {activeTab === 'supplier' && (
-              <button
-                onClick={openAddSupplier}
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-xs transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Tambah Pemasok</span>
-              </button>
-            )}
-          </div>
+          <button
+            onClick={() => {
+              if (activeTab === 'kategori') openAddKategori();
+              else if (activeTab === 'departemen') openAddDepartemen();
+              else if (activeTab === 'satuan') openAddSatuan();
+              else if (activeTab === 'supplier') openAddSupplier();
+            }}
+            className="group flex items-center gap-2 px-5 py-2.5 bg-slate-900 dark:bg-red-600 hover:bg-slate-800 dark:hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md shadow-slate-200 dark:shadow-red-950/20 transition-all active:scale-95 shrink-0"
+          >
+            <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" />
+            <span>Tambah Data {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</span>
+          </button>
         )}
       </div>
 
-      {/* Tab Navigation */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
-        <div className="flex border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 pt-2 overflow-x-auto scrollbar-thin">
-          <button
-            onClick={() => setActiveTab('kategori')}
-            className={`flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'kategori'
-                ? 'border-red-600 text-red-600 dark:text-red-400 font-semibold bg-white dark:bg-slate-900 rounded-t-lg'
-                : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            <span>Kategori Barang ({kategori.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('departemen')}
-            className={`flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'departemen'
-                ? 'border-red-600 text-red-600 dark:text-red-400 font-semibold bg-white dark:bg-slate-900 rounded-t-lg'
-                : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <Building2 className="w-4 h-4 text-purple-500" />
-            <span>Data Departemen / Divisi ({(departemen || []).length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('satuan')}
-            className={`flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'satuan'
-                ? 'border-red-600 text-red-600 dark:text-red-400 font-semibold bg-white dark:bg-slate-900 rounded-t-lg'
-                : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <Ruler className="w-4 h-4" />
-            <span>Satuan Unit ({satuan.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('supplier')}
-            className={`flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'supplier'
-                ? 'border-red-600 text-red-600 dark:text-red-400 font-semibold bg-white dark:bg-slate-900 rounded-t-lg'
-                : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <Truck className="w-4 h-4" />
-            <span>Pemasok / Supplier ({supplier.length})</span>
-          </button>
+      {/* Navigation & Search Card */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
+        {/* Segmented Control */}
+        <div className="flex items-center gap-1 p-1.5 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 overflow-x-auto scrollbar-none">
+          {[
+            { id: 'kategori', label: 'Kategori Barang', icon: Layers, count: kategori.length },
+            { id: 'departemen', label: 'Departemen / Divisi', icon: Building2, count: (departemen || []).length },
+            { id: 'satuan', label: 'Satuan Unit', icon: Ruler, count: satuan.length },
+            { id: 'supplier', label: 'Pemasok / Supplier', icon: Truck, count: supplier.length },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setActiveTab(tab.id as any);
+                setSearchTerm('');
+              }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold transition-all whitespace-nowrap min-w-fit ${
+                activeTab === tab.id
+                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm ring-1 ring-slate-200/50 dark:ring-slate-700'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-800/50'
+              }`}
+            >
+              <tab.icon className={`w-3.5 h-3.5 ${activeTab === tab.id ? 'text-red-500' : 'text-slate-400'}`} />
+              <span>{tab.label}</span>
+              <span className={`text-[10px] font-mono tabular-nums px-1.5 py-0.5 rounded-md ${
+                activeTab === tab.id ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300' : 'bg-slate-200/50 dark:bg-slate-800 text-slate-400'
+              }`}>
+                {tab.count}
+              </span>
+            </button>
+          ))}
         </div>
 
-        {/* Tab 1: Kategori */}
-        {activeTab === 'kategori' && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800">
-                <tr>
-                  <th className="px-4 py-3">Kode</th>
-                  <th className="px-4 py-3">Nama Kategori</th>
-                  <th className="px-4 py-3">Deskripsi</th>
-                  <th className="px-4 py-3 text-center">Total Barang</th>
-                  <th className="px-4 py-3 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {kategori.map((k) => {
-                  const itemCount = barang.filter((b) => b.kategori_id === k.id).length;
-                  return (
-                    <tr key={k.id} className="hover:bg-slate-50 dark:hover:bg-slate-850">
-                      <td className="px-4 py-3 font-mono font-bold text-slate-900 dark:text-white">
-                        {k.kode_kategori}
-                      </td>
-                      <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-200">
-                        {k.nama_kategori}
-                      </td>
-                      <td className="px-4 py-3 text-slate-500 max-w-sm">
-                        {k.deskripsi || '-'}
-                      </td>
-                      <td className="px-4 py-3 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
-                        {itemCount} Barang
-                      </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-2">
-                          {can('manage_master_data') && (
-                            <button
-                              onClick={() => openEditKategori(k)}
-                              className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors"
-                              title="Edit Kategori"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                          )}
-                          {can('delete_master_data') && (
-                            <button
-                              onClick={() => setDeleteConfirm({ type: 'kategori', id: k.id, title: k.nama_kategori })}
-                              className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors"
-                              title="Hapus Kategori"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        {/* Search Bar */}
+        <div className="p-4 bg-white dark:bg-slate-900">
+          <div className="relative group max-w-md">
+            <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400 group-focus-within:text-slate-600 transition-colors" />
+            <input
+              type="text"
+              placeholder={`Cari data ${activeTab}...`}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-4 focus:ring-slate-500/5 focus:border-slate-400 transition-all outline-hidden placeholder:text-slate-400"
+            />
           </div>
-        )}
+        </div>
+      </div>
 
-        {/* Tab 2: Departemen / Divisi */}
-        {activeTab === 'departemen' && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800">
+      {/* Main Content Table Card */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-800/50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-800">
+                <th className="px-6 py-4 w-12 text-center">#</th>
+                <th className="px-6 py-4">Informasi Utama</th>
+                {activeTab === 'kategori' && <th className="px-6 py-4">Deskripsi</th>}
+                {activeTab === 'departemen' && (
+                  <>
+                    <th className="px-6 py-4">Lokasi & PIC</th>
+                    <th className="px-6 py-4 text-center">Aktivitas</th>
+                  </>
+                )}
+                {activeTab === 'supplier' && (
+                  <>
+                    <th className="px-6 py-4">Kontak & PIC</th>
+                    <th className="px-6 py-4">Alamat</th>
+                  </>
+                )}
+                {(activeTab === 'kategori' || activeTab === 'satuan') && <th className="px-6 py-4 text-center">Relasi Barang</th>}
+                <th className="px-6 py-4 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {paginatedData.length === 0 ? (
                 <tr>
-                  <th className="px-4 py-3">Kode Dept</th>
-                  <th className="px-4 py-3">Nama Departemen / Divisi</th>
-                  <th className="px-4 py-3">Penanggung Jawab (PIC)</th>
-                  <th className="px-4 py-3">Lokasi Gedung / Ruang</th>
-                  <th className="px-4 py-3">Keterangan</th>
-                  <th className="px-4 py-3 text-center">Pengeluaran Barang</th>
-                  <th className="px-4 py-3 text-center">Aksi (Edit / Hapus)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {(departemen || []).map((d) => {
-                  const usageCount = transaksiKeluar.filter((t) => t.departemen === d.nama_departemen).length;
-                  return (
-                    <tr key={d.id} className="hover:bg-slate-50 dark:hover:bg-slate-850">
-                      <td className="px-4 py-3 font-mono font-bold text-purple-600 dark:text-purple-400">
-                        {d.kode_departemen}
-                      </td>
-                      <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">
-                        <div className="flex items-center gap-2">
-                          <Building className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-                          <span>{d.nama_departemen}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
-                        <div className="flex items-center gap-1.5">
-                          <UserCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span>{d.penanggung_jawab || '-'}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400 font-mono text-[11px]">
-                        <div className="flex items-center gap-1.5">
-                          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span>{d.lokasi_gedung || '-'}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-slate-500 max-w-xs">
-                        {d.keterangan || '-'}
-                      </td>
-                      <td className="px-4 py-3 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] ${usageCount > 0 ? 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
-                          {usageCount} Transaksi
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-2">
-                          {can('manage_master_data') && (
-                            <button
-                              onClick={() => openEditDepartemen(d)}
-                              className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors"
-                              title="Edit Data Departemen / Divisi"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                          )}
-                          {can('delete_master_data') && (
-                            <button
-                              onClick={() => setDeleteConfirm({ type: 'departemen', id: d.id, title: d.nama_departemen })}
-                              className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors"
-                              title="Hapus Data Departemen"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Tab 3: Satuan */}
-        {activeTab === 'satuan' && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800">
-                <tr>
-                  <th className="px-4 py-3">Kode Satuan</th>
-                  <th className="px-4 py-3">Nama Satuan</th>
-                  <th className="px-4 py-3 text-center">Penggunaan pada Barang</th>
-                  <th className="px-4 py-3 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {satuan.map((s) => {
-                  const itemCount = barang.filter((b) => b.satuan_id === s.id).length;
-                  return (
-                    <tr key={s.id} className="hover:bg-slate-50 dark:hover:bg-slate-850">
-                      <td className="px-4 py-3 font-mono font-bold text-slate-900 dark:text-white">
-                        {s.kode_satuan}
-                      </td>
-                      <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-200">
-                        {s.nama_satuan}
-                      </td>
-                      <td className="px-4 py-3 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
-                        {itemCount} Barang
-                      </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-2">
-                          {can('manage_master_data') && (
-                            <button
-                              onClick={() => openEditSatuan(s)}
-                              className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors"
-                              title="Edit Satuan"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                          )}
-                          {can('delete_master_data') && (
-                            <button
-                              onClick={() => setDeleteConfirm({ type: 'satuan', id: s.id, title: s.nama_satuan })}
-                              className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors"
-                              title="Hapus Satuan"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Tab 4: Supplier */}
-        {activeTab === 'supplier' && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800">
-                <tr>
-                  <th className="px-4 py-3">Kode</th>
-                  <th className="px-4 py-3">Nama Perusahaan Pemasok</th>
-                  <th className="px-4 py-3">Kontak PIC</th>
-                  <th className="px-4 py-3">No. Telepon &amp; Email</th>
-                  <th className="px-4 py-3">Alamat</th>
-                  <th className="px-4 py-3 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {supplier.map((sup) => (
-                  <tr key={sup.id} className="hover:bg-slate-50 dark:hover:bg-slate-850">
-                    <td className="px-4 py-3 font-mono font-bold text-slate-900 dark:text-white">
-                      {sup.kode_supplier}
-                    </td>
-                    <td className="px-4 py-3 font-semibold text-slate-800 dark:text-slate-200">
-                      {sup.nama_supplier}
-                    </td>
-                    <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
-                      {sup.kontak_pic}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-[11px] text-slate-600 dark:text-slate-400">
-                      <div>{sup.no_telepon}</div>
-                      <div className="text-slate-400">{sup.email}</div>
-                    </td>
-                    <td className="px-4 py-3 text-slate-500 max-w-xs">
-                      {sup.alamat}
-                    </td>
-                    <td className="px-4 py-3 text-center whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-2">
-                        {can('manage_master_data') && (
-                          <button
-                            onClick={() => openEditSupplier(sup)}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors"
-                            title="Edit Pemasok"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                        )}
-                        {can('delete_master_data') && (
-                          <button
-                            onClick={() => setDeleteConfirm({ type: 'supplier', id: sup.id, title: sup.nama_supplier })}
-                            className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors"
-                            title="Hapus Pemasok"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
+                  <td colSpan={10} className="py-24 text-center">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="w-16 h-16 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
+                        <AlertCircle className="w-8 h-8 text-slate-200 dark:text-slate-700" />
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                      <div className="space-y-1">
+                        <p className="text-sm font-bold text-slate-400">Data Tidak Ditemukan</p>
+                        <p className="text-xs text-slate-500">Tidak ada data {activeTab} yang sesuai dengan pencarian Anda.</p>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                paginatedData.map((item, idx) => {
+                  const actualIdx = (currentPage - 1) * itemsPerPage + idx + 1;
+                  const itemCount = (activeTab === 'kategori' || activeTab === 'satuan') 
+                    ? barang.filter(b => (activeTab === 'kategori' ? b.kategori_id : b.satuan_id) === item.id).length 
+                    : 0;
+                  const usageCount = activeTab === 'departemen' 
+                    ? transaksiKeluar.filter(t => t.departemen === (item as Departemen).nama_departemen).length 
+                    : 0;
+
+                  return (
+                    <tr key={item.id} className="group hover:bg-slate-50 dark:hover:bg-slate-850/50 transition-colors">
+                      <td className="px-6 py-5 text-[10px] font-mono text-slate-400 text-center">{actualIdx}</td>
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border border-slate-100 dark:border-slate-800 ${
+                            activeTab === 'kategori' ? 'bg-orange-50 text-orange-500' :
+                            activeTab === 'departemen' ? 'bg-purple-50 text-purple-500' :
+                            activeTab === 'satuan' ? 'bg-blue-50 text-blue-500' : 'bg-emerald-50 text-emerald-500'
+                          }`}>
+                            {activeTab === 'kategori' ? <Layers className="w-4 h-4" /> :
+                             activeTab === 'departemen' ? <Building2 className="w-4 h-4" /> :
+                             activeTab === 'satuan' ? <Ruler className="w-4 h-4" /> : <Truck className="w-4 h-4" />}
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-red-600 transition-colors">
+                              {(item as any).nama_kategori || (item as any).nama_departemen || (item as any).nama_satuan || (item as any).nama_supplier}
+                            </div>
+                            <div className="text-[10px] font-mono text-slate-400 mt-0.5 uppercase tracking-wider">
+                              {(item as any).kode_kategori || (item as any).kode_departemen || (item as any).kode_satuan || (item as any).kode_supplier}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {activeTab === 'kategori' && (
+                        <td className="px-6 py-5 max-w-sm">
+                          <p className="text-[11px] text-slate-500 italic leading-relaxed line-clamp-2">{(item as any).deskripsi || 'Tidak ada deskripsi.'}</p>
+                        </td>
+                      )}
+
+                      {activeTab === 'departemen' && (
+                        <>
+                          <td className="px-6 py-5">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-1.5 text-[11px] text-slate-700 dark:text-slate-300">
+                                <UserCheck className="w-3 h-3 text-slate-400" />
+                                <span>{(item as Departemen).penanggung_jawab || '-'}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono italic">
+                                <MapPin className="w-3 h-3" />
+                                <span>{(item as Departemen).lokasi_gedung || '-'}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-5 text-center">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border tabular-nums ${usageCount > 0 ? 'bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-950/20 dark:border-purple-900' : 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800 dark:border-slate-700'}`}>
+                              {usageCount} TRF
+                            </span>
+                          </td>
+                        </>
+                      )}
+
+                      {activeTab === 'supplier' && (
+                        <>
+                          <td className="px-6 py-5">
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-2 text-[11px] text-slate-700 dark:text-slate-300 font-medium">
+                                <UserCheck className="w-3 h-3 text-slate-400" />
+                                <span>{(item as Supplier).kontak_pic}</span>
+                              </div>
+                              <div className="flex flex-col gap-0.5">
+                                <div className="flex items-center gap-2 text-[10px] text-slate-500 font-mono">
+                                  <Phone className="w-3 h-3" />
+                                  <span>{(item as Supplier).no_telepon}</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-[10px] text-slate-500 font-mono">
+                                  <Mail className="w-3 h-3" />
+                                  <span>{(item as Supplier).email}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-5 max-w-xs">
+                            <p className="text-[11px] text-slate-500 leading-tight">{(item as Supplier).alamat}</p>
+                          </td>
+                        </>
+                      )}
+
+                      {(activeTab === 'kategori' || activeTab === 'satuan') && (
+                        <td className="px-6 py-5 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                             <span className="text-[11px] font-black tabular-nums text-slate-700 dark:text-slate-300">{itemCount}</span>
+                             <span className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">SKU</span>
+                          </div>
+                        </td>
+                      )}
+
+                      <td className="px-6 py-5">
+                        <div className="flex items-center justify-center gap-1.5">
+                          {can('manage_master_data') && (
+                            <button
+                              onClick={() => {
+                                if (activeTab === 'kategori') openEditKategori(item as Kategori);
+                                else if (activeTab === 'departemen') openEditDepartemen(item as Departemen);
+                                else if (activeTab === 'satuan') openEditSatuan(item as Satuan);
+                                else if (activeTab === 'supplier') openEditSupplier(item as Supplier);
+                              }}
+                              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-xl transition-all"
+                              title="Sunting Data"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                          )}
+                          {can('delete_master_data') && (
+                            <button
+                              onClick={() => setDeleteConfirm({ 
+                                type: activeTab, 
+                                id: item.id, 
+                                title: (item as any).nama_kategori || (item as any).nama_departemen || (item as any).nama_satuan || (item as any).nama_supplier 
+                              })}
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-all"
+                              title="Hapus Data"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+        
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={filteredData.length}
+          itemsPerPage={itemsPerPage}
+          colorScheme="red"
+        />
       </div>
 
-      {/* Modal: Kategori */}
-      {showKatModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl w-full max-w-md p-6 shadow-2xl text-xs">
-            <div className="flex justify-between items-center border-b pb-3 mb-4">
-              <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                {editingKat ? 'Edit Kategori Barang' : 'Tambah Kategori Barang'}
-              </h3>
-              <button onClick={() => setShowKatModal(false)} className="text-slate-400">
-                <X className="w-4 h-4" />
+      {/* Info Callouts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 no-print">
+        <div className="p-6 rounded-2xl bg-slate-900 text-white shadow-xl flex gap-5">
+           <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/5 shadow-inner">
+             <Info className="w-6 h-6 text-red-500" />
+           </div>
+           <div>
+             <h4 className="font-bold text-sm">Integritas Master Data</h4>
+             <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+               Data master adalah pondasi aplikasi. Pastikan Kategori, Departemen, dan Satuan Unit diisi dengan benar sebelum melakukan input transaksi barang untuk mencegah redundansi.
+             </p>
+           </div>
+        </div>
+        
+        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex gap-5">
+           <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-700 shadow-sm">
+             <ExternalLink className="w-6 h-6 text-slate-600 dark:text-slate-400" />
+           </div>
+           <div>
+             <h4 className="font-bold text-sm text-slate-900 dark:text-white">Relasi & Ketergantungan</h4>
+             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+               Beberapa data master tidak dapat dihapus jika masih memiliki relasi aktif pada tabel transaksi atau katalog barang guna menjaga integritas referensi database (Foreign Key Constraint).
+             </p>
+           </div>
+        </div>
+      </div>
+
+      {/* Forms & Modals (Restyled) */}
+      {(showKatModal || showDeptModal || showSatModal || showSupModal) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden scale-in-95 animate-in zoom-in-95 duration-300">
+            {/* Modal Header */}
+            <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-950/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/30 flex items-center justify-center text-red-600">
+                  <FolderPlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 dark:text-white">
+                    {showKatModal ? 'Kategori Barang' : showDeptModal ? 'Departemen / Divisi' : showSatModal ? 'Satuan Unit' : 'Data Pemasok'}
+                  </h3>
+                  <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest mt-0.5">Entri Data Referensi</p>
+                </div>
+              </div>
+              <button onClick={() => { setShowKatModal(false); setShowDeptModal(false); setShowSatModal(false); setShowSupModal(false); }} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors">
+                <X className="w-4 h-4 text-slate-400" />
               </button>
             </div>
-            <form onSubmit={handleKatSubmit} className="space-y-4">
-              <div>
-                <label className="block font-medium mb-1">Kode Kategori</label>
-                <input
-                  type="text"
-                  required
-                  value={katKode}
-                  onChange={(e) => setKatKode(e.target.value.toUpperCase())}
-                  className="w-full px-3 py-2 font-mono uppercase bg-slate-50 dark:bg-slate-800 border rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="block font-medium mb-1">Nama Kategori</label>
-                <input
-                  type="text"
-                  required
-                  value={katNama}
-                  onChange={(e) => setKatNama(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="block font-medium mb-1">Deskripsi</label>
-                <textarea
-                  rows={2}
-                  value={katDeskripsi}
-                  onChange={(e) => setKatDeskripsi(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-lg"
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowKatModal(false)}
-                  className="px-3 py-1.5 bg-slate-100 rounded-lg text-slate-700"
-                >
-                  Batal
-                </button>
-                <button type="submit" className="px-4 py-1.5 bg-red-600 text-white font-semibold rounded-lg">
-                  Simpan Kategori
-                </button>
-              </div>
-            </form>
+
+            {/* Form Content */}
+            <div className="p-8">
+              {showKatModal && (
+                <form onSubmit={handleKatSubmit} className="space-y-5">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Kode Kategori</label>
+                    <input type="text" required value={katKode} onChange={e => setKatKode(e.target.value)} className="w-full px-4 py-2.5 font-mono uppercase bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-hidden focus:ring-2 focus:ring-red-500/10 focus:border-red-500 transition-all" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Nama Kategori</label>
+                    <input type="text" required value={katNama} onChange={e => setKatNama(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-hidden focus:ring-2 focus:ring-red-500/10 focus:border-red-500 transition-all" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Deskripsi</label>
+                    <textarea rows={3} value={katDeskripsi} onChange={e => setKatDeskripsi(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-hidden focus:ring-2 focus:ring-red-500/10 focus:border-red-500 transition-all resize-none" />
+                  </div>
+                  <div className="pt-4 flex gap-3">
+                    <button type="button" onClick={() => setShowKatModal(false)} className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300">Batal</button>
+                    <button type="submit" className="flex-[2] px-4 py-2.5 bg-red-600 text-white rounded-xl text-xs font-bold shadow-md shadow-red-950/20 active:scale-95 transition-all">Simpan Kategori</button>
+                  </div>
+                </form>
+              )}
+
+              {showDeptModal && (
+                <form onSubmit={handleDeptSubmit} className="space-y-5">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Kode Dept</label>
+                    <input type="text" required value={deptKode} onChange={e => setDeptKode(e.target.value)} className="w-full px-4 py-2.5 font-mono uppercase bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-hidden focus:ring-2 focus:ring-red-500/10 focus:border-red-500 transition-all" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Nama Departemen</label>
+                    <input type="text" required value={deptNama} onChange={e => setDeptNama(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-hidden focus:ring-2 focus:ring-red-500/10 focus:border-red-500 transition-all" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">PIC</label>
+                      <input type="text" value={deptPic} onChange={e => setDeptPic(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-hidden" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Lokasi</label>
+                      <input type="text" value={deptLokasi} onChange={e => setDeptLokasi(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-hidden" />
+                    </div>
+                  </div>
+                  <div className="pt-4 flex gap-3">
+                    <button type="button" onClick={() => setShowDeptModal(false)} className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300">Batal</button>
+                    <button type="submit" className="flex-[2] px-4 py-2.5 bg-red-600 text-white rounded-xl text-xs font-bold shadow-md shadow-red-950/20 active:scale-95 transition-all">Simpan Departemen</button>
+                  </div>
+                </form>
+              )}
+
+              {showSatModal && (
+                <form onSubmit={handleSatSubmit} className="space-y-5">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Kode Satuan</label>
+                    <input type="text" required value={satKode} onChange={e => setSatKode(e.target.value)} placeholder="Misal: PCS" className="w-full px-4 py-2.5 font-mono uppercase bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-hidden focus:ring-2 focus:ring-red-500/10 focus:border-red-500 transition-all" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Nama Satuan</label>
+                    <input type="text" required value={satNama} onChange={e => setSatNama(e.target.value)} placeholder="Misal: Pieces" className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-hidden focus:ring-2 focus:ring-red-500/10 focus:border-red-500 transition-all" />
+                  </div>
+                  <div className="pt-4 flex gap-3">
+                    <button type="button" onClick={() => setShowSatModal(false)} className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300">Batal</button>
+                    <button type="submit" className="flex-[2] px-4 py-2.5 bg-red-600 text-white rounded-xl text-xs font-bold shadow-md shadow-red-950/20 active:scale-95 transition-all">Simpan Satuan</button>
+                  </div>
+                </form>
+              )}
+
+              {showSupModal && (
+                <form onSubmit={handleSupSubmit} className="space-y-5">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Kode</label>
+                      <input type="text" required value={supKode} onChange={e => setSupKode(e.target.value)} className="w-full px-4 py-2.5 font-mono uppercase bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-hidden focus:ring-2 focus:ring-red-500/10 focus:border-red-500 transition-all" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Perusahaan</label>
+                      <input type="text" required value={supNama} onChange={e => setSupNama(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-hidden" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Kontak PIC</label>
+                      <input type="text" value={supPic} onChange={e => setSupPic(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-hidden" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Telepon</label>
+                      <input type="text" value={supTelp} onChange={e => setSupTelp(e.target.value)} className="w-full px-4 py-2.5 font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-hidden" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Email</label>
+                    <input type="email" value={supEmail} onChange={e => setSupEmail(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-hidden" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Alamat</label>
+                    <textarea rows={2} value={supAlamat} onChange={e => setSupAlamat(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-hidden resize-none" />
+                  </div>
+                  <div className="pt-4 flex gap-3">
+                    <button type="button" onClick={() => setShowSupModal(false)} className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300">Batal</button>
+                    <button type="submit" className="flex-[2] px-4 py-2.5 bg-red-600 text-white rounded-xl text-xs font-bold shadow-md shadow-red-950/20 active:scale-95 transition-all">Simpan Pemasok</button>
+                  </div>
+                </form>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Modal: Departemen */}
-      {showDeptModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl text-xs space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-purple-500" />
-                <span>{editingDept ? 'Edit Data Departemen / Divisi' : 'Tambah Departemen / Divisi Baru'}</span>
-              </h3>
-              <button onClick={() => setShowDeptModal(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleDeptSubmit} className="space-y-4">
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Kode Departemen</label>
-                <input
-                  type="text"
-                  required
-                  value={deptKode}
-                  onChange={(e) => setDeptKode(e.target.value.toUpperCase())}
-                  placeholder="Contoh: DPT-01"
-                  className="w-full px-3 py-2 font-mono uppercase bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Nama Departemen / Divisi <span className="text-red-500">*</span></label>
-                <input
-                  type="text"
-                  required
-                  value={deptNama}
-                  onChange={(e) => setDeptNama(e.target.value)}
-                  placeholder="Contoh: Divisi Pengembangan TI"
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Penanggung Jawab (PIC / Kepala Divisi)</label>
-                <input
-                  type="text"
-                  value={deptPic}
-                  onChange={(e) => setDeptPic(e.target.value)}
-                  placeholder="Contoh: Riko Gunawan, S.Kom"
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Lokasi Gedung / Lantai</label>
-                <input
-                  type="text"
-                  value={deptLokasi}
-                  onChange={(e) => setDeptLokasi(e.target.value)}
-                  placeholder="Contoh: Gedung A - Lantai 3"
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Keterangan / Fungsi Divisi</label>
-                <textarea
-                  rows={2}
-                  value={deptKeterangan}
-                  onChange={(e) => setDeptKeterangan(e.target.value)}
-                  placeholder="Deskripsi singkat fungsi operasional divisi..."
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setShowDeptModal(false)}
-                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-700 dark:text-slate-300 font-semibold"
-                >
-                  Batal
-                </button>
-                <button type="submit" className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-xs">
-                  {editingDept ? 'Simpan Perubahan' : 'Tambah Departemen'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal: Satuan */}
-      {showSatModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl w-full max-w-md p-6 shadow-2xl text-xs">
-            <div className="flex justify-between items-center border-b pb-3 mb-4">
-              <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                {editingSat ? 'Edit Satuan Unit' : 'Tambah Satuan Unit'}
-              </h3>
-              <button onClick={() => setShowSatModal(false)} className="text-slate-400">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <form onSubmit={handleSatSubmit} className="space-y-4">
-              <div>
-                <label className="block font-medium mb-1">Kode Satuan (Misal: PCS, UNIT)</label>
-                <input
-                  type="text"
-                  required
-                  value={satKode}
-                  onChange={(e) => setSatKode(e.target.value.toUpperCase())}
-                  className="w-full px-3 py-2 font-mono uppercase bg-slate-50 dark:bg-slate-800 border rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="block font-medium mb-1">Nama Satuan (Misal: Pieces, Box)</label>
-                <input
-                  type="text"
-                  required
-                  value={satNama}
-                  onChange={(e) => setSatNama(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-lg"
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowSatModal(false)}
-                  className="px-3 py-1.5 bg-slate-100 rounded-lg text-slate-700"
-                >
-                  Batal
-                </button>
-                <button type="submit" className="px-4 py-1.5 bg-red-600 text-white font-semibold rounded-lg">
-                  Simpan Satuan
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal: Supplier */}
-      {showSupModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl w-full max-w-lg p-6 shadow-2xl text-xs">
-            <div className="flex justify-between items-center border-b pb-3 mb-4">
-              <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                {editingSup ? 'Edit Pemasok' : 'Tambah Pemasok (Supplier)'}
-              </h3>
-              <button onClick={() => setShowSupModal(false)} className="text-slate-400">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <form onSubmit={handleSupSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium mb-1">Kode Pemasok</label>
-                  <input
-                    type="text"
-                    required
-                    value={supKode}
-                    onChange={(e) => setSupKode(e.target.value.toUpperCase())}
-                    className="w-full px-3 py-2 font-mono uppercase bg-slate-50 dark:bg-slate-800 border rounded-lg"
-                  />
-                </div>
-                <div>
-                  <label className="block font-medium mb-1">Nama Perusahaan</label>
-                  <input
-                    type="text"
-                    required
-                    value={supNama}
-                    onChange={(e) => setSupNama(e.target.value)}
-                    placeholder="PT / CV..."
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-lg"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium mb-1">Kontak PIC</label>
-                  <input
-                    type="text"
-                    value={supPic}
-                    onChange={(e) => setSupPic(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-lg"
-                  />
-                </div>
-                <div>
-                  <label className="block font-medium mb-1">No. Telepon / WA</label>
-                  <input
-                    type="text"
-                    value={supTelp}
-                    onChange={(e) => setSupTelp(e.target.value)}
-                    className="w-full px-3 py-2 font-mono bg-slate-50 dark:bg-slate-800 border rounded-lg"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block font-medium mb-1">Email</label>
-                <input
-                  type="email"
-                  value={supEmail}
-                  onChange={(e) => setSupEmail(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="block font-medium mb-1">Alamat Kantor / Gudang</label>
-                <textarea
-                  rows={2}
-                  value={supAlamat}
-                  onChange={(e) => setSupAlamat(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-lg"
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowSupModal(false)}
-                  className="px-3 py-1.5 bg-slate-100 rounded-lg text-slate-700"
-                >
-                  Batal
-                </button>
-                <button type="submit" className="px-4 py-1.5 bg-red-600 text-white font-semibold rounded-lg">
-                  Simpan Pemasok
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal for Master Data */}
+      {/* Delete Confirmation Modal */}
       {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-sm w-full shadow-2xl p-6 text-center">
-            <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 mx-auto flex items-center justify-center mb-3">
-              <Trash2 className="w-6 h-6" />
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-sm w-full shadow-2xl p-8 text-center scale-in-95 animate-in zoom-in-95 duration-300">
+            <div className="w-16 h-16 rounded-2xl bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 mx-auto flex items-center justify-center mb-6 border border-red-100 dark:border-red-900 shadow-sm">
+              <Trash2 className="w-8 h-8" />
             </div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">
-              Hapus {deleteConfirm.type === 'kategori' ? 'Kategori' : deleteConfirm.type === 'satuan' ? 'Satuan' : deleteConfirm.type === 'departemen' ? 'Departemen' : 'Pemasok'}?
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+              Hapus Data Terseleksi?
             </h3>
-            <p className="text-xs text-slate-500 mt-2">
-              Apakah Anda yakin ingin menghapus data <strong className="text-slate-800 dark:text-slate-200">"{deleteConfirm.title}"</strong> dari sistem?
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+              Anda akan menghapus <strong className="text-slate-900 dark:text-white font-bold italic">"{deleteConfirm.title}"</strong>. Tindakan ini tidak dapat dibatalkan jika data telah dihapus dari MySQL.
             </p>
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setDeleteConfirm(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
-              >
-                Batal
-              </button>
+            <div className="mt-8 flex flex-col gap-2">
               <button
                 type="button"
                 onClick={handleExecuteDelete}
-                className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg flex items-center gap-1.5 shadow-xs"
+                className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black shadow-lg shadow-red-950/20 transition-all active:scale-95"
               >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Ya, Hapus</span>
+                Konfirmasi Hapus
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm(null)}
+                className="w-full py-3 text-xs font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
+              >
+                Batal
               </button>
             </div>
           </div>

@@ -35,7 +35,7 @@ export const CodeIgniterSidebar: React.FC<SidebarProps> = ({
   onCloseMobile,
 }) => {
   const { user, can } = useAuth();
-  const { barang, transaksiKeluar, appSettings } = useInventory();
+  const { barang, transaksiKeluar, appSettings, mutasiStok } = useInventory();
 
   const handleNavClick = (view: string) => {
     onNavigate(view);
@@ -231,6 +231,26 @@ export const CodeIgniterSidebar: React.FC<SidebarProps> = ({
                 </div>
                 <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${isNavActive('perpindahan_barang') ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-300 border border-slate-700/60'}`}>
                   {transaksiKeluar.filter((t) => t.no_transaksi.startsWith('TRF-')).length}
+                </span>
+              </button>
+
+              {/* Barang Ditarik (Recall) */}
+              <button
+                onClick={() => handleNavClick('barang_ditarik')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 text-xs font-semibold rounded-xl transition-all ${
+                  isNavActive('barang_ditarik')
+                    ? 'bg-gradient-to-r from-red-600 to-orange-600 text-white shadow-md shadow-red-950/40'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${isNavActive('barang_ditarik') ? 'bg-white/20 text-white' : 'bg-orange-950/60 text-orange-400 border border-orange-900/50'}`}>
+                    <Activity className="w-3.5 h-3.5" />
+                  </div>
+                  <span>Barang Ditarik (Recall)</span>
+                </div>
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${isNavActive('barang_ditarik') ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-300 border border-slate-700/60'}`}>
+                  {mutasiStok.filter((m) => m.referensi.startsWith('RECALL-')).length}
                 </span>
               </button>
 

@@ -12,6 +12,7 @@ import { CodeIgniterMVCModal } from './components/common/CodeIgniterMVCModal';
 import { UserProfileModal } from './components/users/UserProfileModal';
 import { DashboardView } from './components/dashboard/DashboardView';
 import { BarangListView } from './components/barang/BarangListView';
+import { BarangDitarikView } from './components/barang/BarangDitarikView';
 import { TransaksiMasukView } from './components/transaksi/TransaksiMasukView';
 import { TransaksiKeluarView } from './components/transaksi/TransaksiKeluarView';
 import { PerpindahanBarangView } from './components/transaksi/PerpindahanBarangView';
@@ -123,6 +124,8 @@ const MainLayout: React.FC = () => {
         return <DashboardView onNavigate={setCurrentView} onOpenMVCModal={() => setIsMVCModalOpen(true)} />;
       case 'barang':
         return <BarangListView />;
+      case 'barang_ditarik':
+        return <BarangDitarikView />;
       case 'transaksi_masuk':
         return <TransaksiMasukView />;
       case 'transaksi_keluar':
