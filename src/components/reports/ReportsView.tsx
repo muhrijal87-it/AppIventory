@@ -722,64 +722,162 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ type = 'stok' }) => {
 
         {/* 3. CONTENT: LAPORAN TRANSAKSI MASUK & KELUAR */}
         {activeReport === 'transaksi' && (
-          <div>
-            <div className="text-xs font-bold uppercase text-slate-700 mb-2">
-              Rekapitulasi Transaksi Masuk &amp; Keluar
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Inbound summary */}
-              <div className="border border-slate-200 rounded p-3">
-                <div className="font-bold text-xs text-emerald-800 mb-2 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <ArrowDownToLine className="w-4 h-4 text-emerald-600" />
-                    <span>Barang Masuk Terakhir ({filteredTrxMasuk.length} Transaksi)</span>
-                  </span>
-                  <span className="font-mono text-emerald-600">
-                    +{filteredTrxMasuk.reduce((sum, t) => sum + t.jumlah, 0)} Unit
-                  </span>
-                </div>
-                <div className="space-y-1.5 text-[11px] max-h-80 overflow-y-auto">
-                  {filteredTrxMasuk.map((t) => (
-                    <div key={t.id} className="flex justify-between border-b border-slate-100 pb-1">
-                      <div>
-                        <span className="font-mono font-bold text-slate-800">{t.no_faktur}</span>
-                        <span className="text-slate-500 ml-1.5">({barang.find((b) => b.id === t.barang_id)?.nama_barang})</span>
-                      </div>
-                      <span className="font-mono font-bold text-emerald-600">+{t.jumlah}</span>
-                    </div>
-                  ))}
-                </div>
+          <div className="space-y-8">
+            {/* 3.1 Tabel Barang Masuk Terakhir */}
+            <div>
+              <div className="flex justify-between items-center text-xs font-bold uppercase text-slate-700 mb-2">
+                <span>Daftar Barang Masuk Terakhir (Inbound)</span>
+                <span className="font-mono text-[11px] normal-case text-emerald-700 font-bold">
+                  Total: {filteredTrxMasuk.length} Transaksi (+{filteredTrxMasuk.reduce((sum, t) => sum + t.jumlah, 0)} Unit)
+                </span>
               </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border border-slate-200">
+                  <thead className="bg-slate-100 text-slate-700 font-semibold border-b border-slate-300">
+                    <tr>
+                      <th className="p-2 border-r border-slate-200 text-center w-10">No</th>
+                      <th className="p-2 border-r border-slate-200 whitespace-nowrap">No. Faktur / Dokumen</th>
+                      <th className="p-2 border-r border-slate-200 whitespace-nowrap">Tanggal</th>
+                      <th className="p-2 border-r border-slate-200">Nama Barang &amp; SKU</th>
+                      <th className="p-2 border-r border-slate-200 text-right whitespace-nowrap">Jumlah Masuk</th>
+                      <th className="p-2 border-r border-slate-200">Supplier / Pihak Terkait</th>
+                      <th className="p-2 text-center whitespace-nowrap">Keterangan</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 text-[11px]">
+                    {filteredTrxMasuk.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="p-6 text-center text-slate-400 italic">
+                          Belum ada data barang masuk.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredTrxMasuk.map((t, idx) => {
+                        const itm = barang.find((b) => b.id === t.barang_id);
+                        const sup = supplier.find((s) => s.id === t.supplier_id)?.nama_supplier || 'Supplier Umum';
+                        return (
+                          <tr key={t.id} className="hover:bg-slate-50">
+                            <td className="p-2 border-r border-slate-200 text-center font-mono">{idx + 1}</td>
+                            <td className="p-2 border-r border-slate-200 font-mono font-bold text-emerald-700 whitespace-nowrap">
+                              {t.no_faktur}
+                            </td>
+                            <td className="p-2 border-r border-slate-200 font-mono whitespace-nowrap">{t.tanggal}</td>
+                            <td className="p-2 border-r border-slate-200">
+                              <div className="font-bold text-slate-900">{itm?.nama_barang || `Barang #${t.barang_id}`}</div>
+                              <div className="text-[10px] text-slate-500 font-mono">Kode: {itm?.kode_barang || '-'}</div>
+                            </td>
+                            <td className="p-2 border-r border-slate-200 text-right font-mono font-bold text-emerald-600 whitespace-nowrap">
+                              +{t.jumlah} Unit
+                            </td>
+                            <td className="p-2 border-r border-slate-200 font-medium text-slate-800">{sup}</td>
+                            <td className="p-2 text-center text-slate-500 text-[10px]">Penerimaan Gudang</td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                  <tfoot className="bg-slate-100 font-bold text-xs border-t-2 border-slate-300">
+                    <tr>
+                      <td colSpan={4} className="p-2 text-right border-r border-slate-300">
+                        TOTAL KUANTITAS MASUK KESELURUHAN:
+                      </td>
+                      <td className="p-2 text-right font-mono border-r border-slate-300 text-sm text-emerald-700 whitespace-nowrap">
+                        +{filteredTrxMasuk.reduce((sum, t) => sum + t.jumlah, 0)} Unit
+                      </td>
+                      <td colSpan={2} className="p-2 text-slate-500 text-[11px] font-normal italic">
+                        Semua barang masuk tercatat ke sistem inventaris utama
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
 
-              {/* Outbound summary */}
-              <div className="border border-slate-200 rounded p-3">
-                <div className="font-bold text-xs text-orange-800 mb-2 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <ArrowUpFromLine className="w-4 h-4 text-orange-600" />
-                    <span>Barang Keluar Terakhir ({filteredTrxKeluar.length} Transaksi)</span>
-                  </span>
-                  <span className="font-mono text-orange-600">
-                    -{filteredTrxKeluar.filter((t) => !t.no_transaksi.startsWith('TRF-')).reduce((sum, t) => sum + t.jumlah, 0)} Unit
-                  </span>
-                </div>
-                <div className="space-y-1.5 text-[11px] max-h-80 overflow-y-auto">
-                  {filteredTrxKeluar.map((t) => {
-                    const isTRF = t.no_transaksi.startsWith('TRF-');
-                    return (
-                      <div key={t.id} className="flex justify-between border-b border-slate-100 pb-1">
-                        <div>
-                          <span className={`font-mono font-bold ${isTRF ? 'text-purple-700' : 'text-slate-800'}`}>
-                            {t.no_transaksi}
-                          </span>
-                          <span className="text-slate-500 ml-1.5">({t.penerima})</span>
-                        </div>
-                        <span className={`font-mono font-bold ${isTRF ? 'text-purple-600' : 'text-orange-600'}`}>
-                          {isTRF ? `${t.jumlah} (Pindah)` : `-${t.jumlah}`}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+            {/* 3.2 Tabel Barang Keluar Terakhir */}
+            <div>
+              <div className="flex justify-between items-center text-xs font-bold uppercase text-slate-700 mb-2">
+                <span>Daftar Barang Keluar Terakhir (Outbound &amp; Distribusi) — {filteredTrxKeluar.length} Transaksi</span>
+                <span className="font-mono text-[11px] normal-case text-orange-700 font-bold">
+                  Total Keluar: -{filteredTrxKeluar.filter((t) => !t.no_transaksi.startsWith('TRF-')).reduce((sum, t) => sum + t.jumlah, 0)} Unit
+                </span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border border-slate-200">
+                  <thead className="bg-slate-100 text-slate-700 font-semibold border-b border-slate-300">
+                    <tr>
+                      <th className="p-2 border-r border-slate-200 text-center w-10">No</th>
+                      <th className="p-2 border-r border-slate-200 whitespace-nowrap">No. Transaksi</th>
+                      <th className="p-2 border-r border-slate-200 whitespace-nowrap">Tanggal</th>
+                      <th className="p-2 border-r border-slate-200">Uraian Barang &amp; Serial Number</th>
+                      <th className="p-2 border-r border-slate-200">Penerima / Departemen</th>
+                      <th className="p-2 border-r border-slate-200 text-right whitespace-nowrap">Jumlah</th>
+                      <th className="p-2 border-r border-slate-200">Keperluan / Memo</th>
+                      <th className="p-2 text-center whitespace-nowrap">Status Tipe</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 text-[11px]">
+                    {filteredTrxKeluar.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="p-6 text-center text-slate-400 italic">
+                          Belum ada data barang keluar.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredTrxKeluar.map((t, idx) => {
+                        const itm = barang.find((b) => b.id === t.barang_id);
+                        const isTRF = t.no_transaksi.startsWith('TRF-');
+                        return (
+                          <tr key={t.id} className="hover:bg-slate-50">
+                            <td className="p-2 border-r border-slate-200 text-center font-mono">{idx + 1}</td>
+                            <td className={`p-2 border-r border-slate-200 font-mono font-bold whitespace-nowrap ${isTRF ? 'text-purple-700' : 'text-slate-900'}`}>
+                              {t.no_transaksi}
+                            </td>
+                            <td className="p-2 border-r border-slate-200 font-mono whitespace-nowrap">{t.tanggal}</td>
+                            <td className="p-2 border-r border-slate-200">
+                              <div className="font-bold text-slate-900">{itm?.nama_barang || `Barang #${t.barang_id}`}</div>
+                              <div className="text-[10px] text-slate-500 font-mono">
+                                Kode: {itm?.kode_barang} {t.model && `· Model: ${t.model}`}
+                              </div>
+                              {t.serial_number && (
+                                <div className="text-[10px] font-mono font-semibold text-orange-700 mt-0.5">
+                                  SN: {t.serial_number}
+                                </div>
+                              )}
+                            </td>
+                            <td className="p-2 border-r border-slate-200">
+                              <div className="font-bold text-slate-900">{t.penerima}</div>
+                              <div className="text-[10px] text-slate-500">{t.departemen}</div>
+                            </td>
+                            <td className={`p-2 border-r border-slate-200 text-right font-mono font-bold whitespace-nowrap ${isTRF ? 'text-purple-700' : 'text-orange-600'}`}>
+                              {isTRF ? `${t.jumlah} (Pindah)` : `-${t.jumlah} Unit`}
+                            </td>
+                            <td className="p-2 border-r border-slate-200 text-slate-600 max-w-[180px]">
+                              {t.keperluan || 'Kebutuhan operasional unit'}
+                            </td>
+                            <td className="p-2 text-center whitespace-nowrap">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${isTRF ? 'bg-purple-100 text-purple-700' : 'bg-orange-100 text-orange-700'}`}>
+                                {isTRF ? 'PERPINDAHAN' : 'KELUAR'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                  <tfoot className="bg-slate-100 font-bold text-xs border-t-2 border-slate-300">
+                    <tr>
+                      <td colSpan={5} className="p-2 text-right border-r border-slate-300">
+                        TOTAL KUANTITAS KELUAR (STANDAR / OPERASIONAL):
+                      </td>
+                      <td className="p-2 text-right font-mono border-r border-slate-300 text-sm text-orange-700 whitespace-nowrap">
+                        -{filteredTrxKeluar.filter((t) => !t.no_transaksi.startsWith('TRF-')).reduce((sum, t) => sum + t.jumlah, 0)} Unit
+                      </td>
+                      <td colSpan={2} className="p-2 text-slate-500 text-[11px] font-normal italic">
+                        Menampilkan seluruh {filteredTrxKeluar.length} transaksi keluar secara lengkap
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
             </div>
           </div>
